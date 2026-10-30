@@ -1,11 +1,11 @@
 {
   "schema_version": 2,
   "report_name": "Portfolio Showcase",
-  "rendered_at": "2026-10-24T02:22:43.285216+00:00",
+  "rendered_at": "2026-10-30T16:48:07.947816+00:00",
   "rendered_by": "tracebi reference",
   "format": "html",
   "output_path": "portfolio_showcase.html",
-  "git_sha": "74a11c4379cf2688268c92a51cb84b4c22cfa182",
+  "git_sha": "cf38540cdf62c06c8db5ed987adff35755de7ad7",
   "parameters": {},
   "sections": [
     {
@@ -15,7 +15,7 @@
       "dataset_name": "fact_holdings_result",
       "dataset_shape": [
         1,
-        4
+        9
       ],
       "dataset_lineage": [
         {
@@ -26,7 +26,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.655675+00:00",
+          "timestamp": "2026-10-30T16:48:06.986568+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -41,28 +41,36 @@
         },
         {
           "operation": "assign",
-          "description": "Derived measure column(s): positions = holding_id, cost_basis = cost",
+          "description": "Derived measure column(s): unrealized = fair_value - cost, cost_basis = cost, positions = holding_id, spread_x_par = spread_bps * par, par_amount = par, spread_p90 = spread_bps",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.657060+00:00",
+          "timestamp": "2026-10-30T16:48:06.989375+00:00",
           "metadata": {
             "derived": {
+              "unrealized": "fair_value - cost",
+              "cost_basis": "cost",
               "positions": "holding_id",
-              "cost_basis": "cost"
+              "spread_x_par": "spread_bps * par",
+              "par_amount": "par",
+              "spread_p90": "spread_bps"
             }
           }
         },
         {
           "operation": "assign",
-          "description": "Ratio measure(s): mark = fair_value / cost_basis",
+          "description": "Ratio measure(s): mark = fair_value / cost_basis, wtd_spread_bps = spread_x_par / par_amount",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.667372+00:00",
+          "timestamp": "2026-10-30T16:48:07.001357+00:00",
           "metadata": {
             "ratios": {
               "mark": [
                 "fair_value",
                 "cost_basis"
+              ],
+              "wtd_spread_bps": [
+                "spread_x_par",
+                "par_amount"
               ]
             }
           }
@@ -72,7 +80,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.667406+00:00",
+          "timestamp": "2026-10-30T16:48:07.001381+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -80,16 +88,23 @@
             "rows_out": 1,
             "measures": {
               "fair_value": "sum",
+              "unrealized": "sum",
+              "cost_basis": "sum",
               "positions": "count",
-              "cost_basis": "sum"
+              "spread_x_par": "sum",
+              "par_amount": "sum",
+              "spread_p90": "p90"
             },
             "model": "portfolio_model",
             "query_spec": {
               "fact": "fact_holdings",
               "measures": [
                 "fair_value",
+                "unrealized",
+                "mark",
                 "positions",
-                "mark"
+                "wtd_spread_bps",
+                "spread_p90"
               ],
               "dimensions": [],
               "filters": {},
@@ -99,137 +114,7 @@
           }
         }
       ],
-      "dataset_fingerprint": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a",
-      "columns": null,
-      "max_rows": null
-    },
-    {
-      "section_type": "table",
-      "title": "by_sector",
-      "id": "by_sector",
-      "dataset_name": "fact_holdings_result",
-      "dataset_shape": [
-        6,
-        2
-      ],
-      "dataset_lineage": [
-        {
-          "operation": "load",
-          "description": "Loaded 'fact_holdings' from connector 'warehouse'",
-          "connector": {
-            "connector_name": "warehouse",
-            "connector_type": "DuckDBConnector"
-          },
-          "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.687233+00:00",
-          "metadata": {
-            "rows_loaded": 25,
-            "filter": null,
-            "columns": null,
-            "pushdown": false,
-            "input": {
-              "table": "fact_holdings",
-              "fingerprint": "9862ad1f4acf91db1d7304ab9d81c90ee5f5ae109b8fedc0c364574658080faf",
-              "rows": 25
-            }
-          }
-        },
-        {
-          "operation": "load",
-          "description": "Loaded 'dim_issuer' from connector 'warehouse'",
-          "connector": {
-            "connector_name": "warehouse",
-            "connector_type": "DuckDBConnector"
-          },
-          "source": "dim_issuer",
-          "timestamp": "2026-10-24T02:22:42.693718+00:00",
-          "metadata": {
-            "rows_loaded": 13,
-            "filter": null,
-            "columns": null,
-            "pushdown": false,
-            "input": {
-              "table": "dim_issuer",
-              "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
-              "rows": 13
-            }
-          }
-        },
-        {
-          "operation": "join",
-          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
-          "connector": null,
-          "source": null,
-          "timestamp": "2026-10-24T02:22:42.697031+00:00",
-          "metadata": {
-            "fact": "fact_holdings",
-            "dimension": "dim_issuer",
-            "fact_key": "issuer_id",
-            "dim_key": "issuer_id",
-            "engine": "duckdb"
-          }
-        },
-        {
-          "operation": "sort",
-          "description": "Ordered by fair_value desc, dim_issuer.sector",
-          "connector": null,
-          "source": null,
-          "timestamp": "2026-10-24T02:22:42.706778+00:00",
-          "metadata": {
-            "order_by": [
-              {
-                "column": "fair_value",
-                "desc": true
-              },
-              {
-                "column": "dim_issuer.sector",
-                "desc": false
-              }
-            ],
-            "limit": null
-          }
-        },
-        {
-          "operation": "transform",
-          "description": "Star-schema query executed via duckdb",
-          "connector": null,
-          "source": null,
-          "timestamp": "2026-10-24T02:22:42.706805+00:00",
-          "metadata": {
-            "engine": "duckdb",
-            "engine_version": "1.5.6",
-            "fingerprint_algo": 2,
-            "rows_out": 6,
-            "measures": {
-              "fair_value": "sum"
-            },
-            "model": "portfolio_model",
-            "query_spec": {
-              "fact": "fact_holdings",
-              "measures": [
-                "fair_value"
-              ],
-              "dimensions": [
-                "dim_issuer.sector"
-              ],
-              "filters": {},
-              "aggregate": true,
-              "allow_fanout": false,
-              "order_by": [
-                {
-                  "column": "fair_value",
-                  "desc": true
-                },
-                {
-                  "column": "dim_issuer.sector",
-                  "desc": false
-                }
-              ]
-            }
-          }
-        }
-      ],
-      "dataset_fingerprint": "ef244f51f80820bcf641fe242790adedee7d8270af7d07b51574245b78203928",
+      "dataset_fingerprint": "f1abefad59bd3eb56cc3c966dee74dfe62bc520701a05a7e2440287bd2fdf33c",
       "columns": null,
       "max_rows": null
     },
@@ -251,7 +136,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.727462+00:00",
+          "timestamp": "2026-10-30T16:48:07.022580+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -272,7 +157,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_issuer",
-          "timestamp": "2026-10-24T02:22:42.731818+00:00",
+          "timestamp": "2026-10-30T16:48:07.026742+00:00",
           "metadata": {
             "rows_loaded": 13,
             "filter": null,
@@ -290,7 +175,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.735135+00:00",
+          "timestamp": "2026-10-30T16:48:07.030350+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_issuer",
@@ -304,7 +189,7 @@
           "description": "Share measure(s): fv_share = fair_value / total(fair_value)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.744291+00:00",
+          "timestamp": "2026-10-30T16:48:07.040499+00:00",
           "metadata": {
             "shares": {
               "fv_share": "fair_value"
@@ -316,7 +201,7 @@
           "description": "Ordered by fair_value desc, dim_issuer.sector, fv_share, limit 1",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.746405+00:00",
+          "timestamp": "2026-10-30T16:48:07.042417+00:00",
           "metadata": {
             "order_by": [
               {
@@ -340,7 +225,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.746427+00:00",
+          "timestamp": "2026-10-30T16:48:07.042437+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -387,12 +272,12 @@
     },
     {
       "section_type": "table",
-      "title": "gain",
-      "id": "gain",
+      "title": "top_issuer",
+      "id": "top_issuer",
       "dataset_name": "fact_holdings_result",
       "dataset_shape": [
         1,
-        1
+        3
       ],
       "dataset_lineage": [
         {
@@ -403,7 +288,159 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.765445+00:00",
+          "timestamp": "2026-10-30T16:48:07.062899+00:00",
+          "metadata": {
+            "rows_loaded": 25,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_holdings",
+              "fingerprint": "9862ad1f4acf91db1d7304ab9d81c90ee5f5ae109b8fedc0c364574658080faf",
+              "rows": 25
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_issuer' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_issuer",
+          "timestamp": "2026-10-30T16:48:07.066955+00:00",
+          "metadata": {
+            "rows_loaded": 13,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_issuer",
+              "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
+              "rows": 13
+            }
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.069609+00:00",
+          "metadata": {
+            "fact": "fact_holdings",
+            "dimension": "dim_issuer",
+            "fact_key": "issuer_id",
+            "dim_key": "issuer_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Share measure(s): fv_share = fair_value / total(fair_value)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.077203+00:00",
+          "metadata": {
+            "shares": {
+              "fv_share": "fair_value"
+            }
+          }
+        },
+        {
+          "operation": "sort",
+          "description": "Ordered by fair_value desc, dim_issuer.issuer, fv_share, limit 1",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.078847+00:00",
+          "metadata": {
+            "order_by": [
+              {
+                "column": "fair_value",
+                "desc": true
+              },
+              {
+                "column": "dim_issuer.issuer",
+                "desc": false
+              },
+              {
+                "column": "fv_share",
+                "desc": false
+              }
+            ],
+            "limit": 1
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.078878+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "engine_version": "1.5.6",
+            "fingerprint_algo": 2,
+            "rows_out": 1,
+            "measures": {
+              "fair_value": "sum"
+            },
+            "model": "portfolio_model",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": [
+                "fair_value",
+                "fv_share"
+              ],
+              "dimensions": [
+                "dim_issuer.issuer"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false,
+              "order_by": [
+                {
+                  "column": "fair_value",
+                  "desc": true
+                },
+                {
+                  "column": "dim_issuer.issuer",
+                  "desc": false
+                },
+                {
+                  "column": "fv_share",
+                  "desc": false
+                }
+              ],
+              "limit": 1
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "bc6de86d0e5868a25325cc5e8572a156994105a2e5c2b8eed332d3bdb476058d",
+      "columns": null,
+      "max_rows": null
+    },
+    {
+      "section_type": "table",
+      "title": "by_sector",
+      "id": "by_sector",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        6,
+        6
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_holdings' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_holdings",
+          "timestamp": "2026-10-30T16:48:07.127208+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -418,14 +455,102 @@
         },
         {
           "operation": "assign",
-          "description": "Derived measure column(s): unrealized = fair_value - cost",
+          "description": "Derived measure column(s): unrealized = fair_value - cost, cost_basis = cost, positions = holding_id",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.767652+00:00",
+          "timestamp": "2026-10-30T16:48:07.129580+00:00",
           "metadata": {
             "derived": {
-              "unrealized": "fair_value - cost"
+              "unrealized": "fair_value - cost",
+              "cost_basis": "cost",
+              "positions": "holding_id"
             }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_issuer' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_issuer",
+          "timestamp": "2026-10-30T16:48:07.135170+00:00",
+          "metadata": {
+            "rows_loaded": 13,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_issuer",
+              "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
+              "rows": 13
+            }
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.138081+00:00",
+          "metadata": {
+            "fact": "fact_holdings",
+            "dimension": "dim_issuer",
+            "fact_key": "issuer_id",
+            "dim_key": "issuer_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Ratio measure(s): mark = fair_value / cost_basis",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.147589+00:00",
+          "metadata": {
+            "ratios": {
+              "mark": [
+                "fair_value",
+                "cost_basis"
+              ]
+            }
+          }
+        },
+        {
+          "operation": "sort",
+          "description": "Ordered by fair_value desc, dim_issuer.sector, unrealized, cost_basis, positions, mark",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.149978+00:00",
+          "metadata": {
+            "order_by": [
+              {
+                "column": "fair_value",
+                "desc": true
+              },
+              {
+                "column": "dim_issuer.sector",
+                "desc": false
+              },
+              {
+                "column": "unrealized",
+                "desc": false
+              },
+              {
+                "column": "cost_basis",
+                "desc": false
+              },
+              {
+                "column": "positions",
+                "desc": false
+              },
+              {
+                "column": "mark",
+                "desc": false
+              }
+            ],
+            "limit": null
           }
         },
         {
@@ -433,30 +558,64 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.772754+00:00",
+          "timestamp": "2026-10-30T16:48:07.150001+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
             "fingerprint_algo": 2,
-            "rows_out": 1,
+            "rows_out": 6,
             "measures": {
-              "unrealized": "sum"
+              "fair_value": "sum",
+              "unrealized": "sum",
+              "cost_basis": "sum",
+              "positions": "count"
             },
             "model": "portfolio_model",
             "query_spec": {
               "fact": "fact_holdings",
               "measures": [
-                "unrealized"
+                "fair_value",
+                "unrealized",
+                "mark",
+                "positions"
               ],
-              "dimensions": [],
+              "dimensions": [
+                "dim_issuer.sector"
+              ],
               "filters": {},
               "aggregate": true,
-              "allow_fanout": false
+              "allow_fanout": false,
+              "order_by": [
+                {
+                  "column": "fair_value",
+                  "desc": true
+                },
+                {
+                  "column": "dim_issuer.sector",
+                  "desc": false
+                },
+                {
+                  "column": "unrealized",
+                  "desc": false
+                },
+                {
+                  "column": "cost_basis",
+                  "desc": false
+                },
+                {
+                  "column": "positions",
+                  "desc": false
+                },
+                {
+                  "column": "mark",
+                  "desc": false
+                }
+              ]
             }
           }
         }
       ],
-      "dataset_fingerprint": "80f1f2b286509fca72fe4494389fe3f8b1852251563c7e3f1e6a5d79c367cbbb",
+      "dataset_fingerprint": "d5284af3bae6ca4b89d6db4e6dc8ebf3dd087e50637a5137a6c1614338d0c54c",
       "columns": null,
       "max_rows": null
     },
@@ -467,7 +626,7 @@
       "dataset_name": "fact_holdings_result",
       "dataset_shape": [
         3,
-        2
+        6
       ],
       "dataset_lineage": [
         {
@@ -478,7 +637,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.791800+00:00",
+          "timestamp": "2026-10-30T16:48:07.172269+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -492,6 +651,20 @@
           }
         },
         {
+          "operation": "assign",
+          "description": "Derived measure column(s): unrealized = fair_value - cost, cost_basis = cost, positions = holding_id",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.174647+00:00",
+          "metadata": {
+            "derived": {
+              "unrealized": "fair_value - cost",
+              "cost_basis": "cost",
+              "positions": "holding_id"
+            }
+          }
+        },
+        {
           "operation": "load",
           "description": "Loaded 'dim_fund' from connector 'warehouse'",
           "connector": {
@@ -499,7 +672,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_fund",
-          "timestamp": "2026-10-24T02:22:42.796057+00:00",
+          "timestamp": "2026-10-30T16:48:07.180212+00:00",
           "metadata": {
             "rows_loaded": 3,
             "filter": null,
@@ -517,7 +690,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_fund' on fund_id = fund_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.798926+00:00",
+          "timestamp": "2026-10-30T16:48:07.182625+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_fund",
@@ -527,11 +700,26 @@
           }
         },
         {
-          "operation": "sort",
-          "description": "Ordered by fair_value desc, dim_fund.fund",
+          "operation": "assign",
+          "description": "Ratio measure(s): mark = fair_value / cost_basis",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.807852+00:00",
+          "timestamp": "2026-10-30T16:48:07.190824+00:00",
+          "metadata": {
+            "ratios": {
+              "mark": [
+                "fair_value",
+                "cost_basis"
+              ]
+            }
+          }
+        },
+        {
+          "operation": "sort",
+          "description": "Ordered by fair_value desc, dim_fund.fund, unrealized, cost_basis, positions, mark",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.192801+00:00",
           "metadata": {
             "order_by": [
               {
@@ -540,6 +728,22 @@
               },
               {
                 "column": "dim_fund.fund",
+                "desc": false
+              },
+              {
+                "column": "unrealized",
+                "desc": false
+              },
+              {
+                "column": "cost_basis",
+                "desc": false
+              },
+              {
+                "column": "positions",
+                "desc": false
+              },
+              {
+                "column": "mark",
                 "desc": false
               }
             ],
@@ -551,20 +755,26 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.807878+00:00",
+          "timestamp": "2026-10-30T16:48:07.192831+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
             "fingerprint_algo": 2,
             "rows_out": 3,
             "measures": {
-              "fair_value": "sum"
+              "fair_value": "sum",
+              "unrealized": "sum",
+              "cost_basis": "sum",
+              "positions": "count"
             },
             "model": "portfolio_model",
             "query_spec": {
               "fact": "fact_holdings",
               "measures": [
-                "fair_value"
+                "fair_value",
+                "unrealized",
+                "mark",
+                "positions"
               ],
               "dimensions": [
                 "dim_fund.fund"
@@ -580,135 +790,21 @@
                 {
                   "column": "dim_fund.fund",
                   "desc": false
-                }
-              ]
-            }
-          }
-        }
-      ],
-      "dataset_fingerprint": "e65c4726930bcbaa396aa8487e3f83ca85f5f5796beae16a8853fed7ca37cec4",
-      "columns": null,
-      "max_rows": null
-    },
-    {
-      "section_type": "table",
-      "title": "by_rating",
-      "id": "by_rating",
-      "dataset_name": "fact_holdings_result",
-      "dataset_shape": [
-        7,
-        2
-      ],
-      "dataset_lineage": [
-        {
-          "operation": "load",
-          "description": "Loaded 'fact_holdings' from connector 'warehouse'",
-          "connector": {
-            "connector_name": "warehouse",
-            "connector_type": "DuckDBConnector"
-          },
-          "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.827390+00:00",
-          "metadata": {
-            "rows_loaded": 25,
-            "filter": null,
-            "columns": null,
-            "pushdown": false,
-            "input": {
-              "table": "fact_holdings",
-              "fingerprint": "9862ad1f4acf91db1d7304ab9d81c90ee5f5ae109b8fedc0c364574658080faf",
-              "rows": 25
-            }
-          }
-        },
-        {
-          "operation": "load",
-          "description": "Loaded 'dim_rating' from connector 'warehouse'",
-          "connector": {
-            "connector_name": "warehouse",
-            "connector_type": "DuckDBConnector"
-          },
-          "source": "dim_rating",
-          "timestamp": "2026-10-24T02:22:42.834302+00:00",
-          "metadata": {
-            "rows_loaded": 9,
-            "filter": null,
-            "columns": null,
-            "pushdown": false,
-            "input": {
-              "table": "dim_rating",
-              "fingerprint": "ce56858e94bceb16f7e0e9096e3863338ca9a50e9043b958f986d67b5f30dad9",
-              "rows": 9
-            }
-          }
-        },
-        {
-          "operation": "join",
-          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_rating' on rating_id = rating_id (left)",
-          "connector": null,
-          "source": null,
-          "timestamp": "2026-10-24T02:22:42.837151+00:00",
-          "metadata": {
-            "fact": "fact_holdings",
-            "dimension": "dim_rating",
-            "fact_key": "rating_id",
-            "dim_key": "rating_id",
-            "engine": "duckdb"
-          }
-        },
-        {
-          "operation": "sort",
-          "description": "Ordered by fair_value desc, dim_rating.rating",
-          "connector": null,
-          "source": null,
-          "timestamp": "2026-10-24T02:22:42.846408+00:00",
-          "metadata": {
-            "order_by": [
-              {
-                "column": "fair_value",
-                "desc": true
-              },
-              {
-                "column": "dim_rating.rating",
-                "desc": false
-              }
-            ],
-            "limit": null
-          }
-        },
-        {
-          "operation": "transform",
-          "description": "Star-schema query executed via duckdb",
-          "connector": null,
-          "source": null,
-          "timestamp": "2026-10-24T02:22:42.846438+00:00",
-          "metadata": {
-            "engine": "duckdb",
-            "engine_version": "1.5.6",
-            "fingerprint_algo": 2,
-            "rows_out": 7,
-            "measures": {
-              "fair_value": "sum"
-            },
-            "model": "portfolio_model",
-            "query_spec": {
-              "fact": "fact_holdings",
-              "measures": [
-                "fair_value"
-              ],
-              "dimensions": [
-                "dim_rating.rating"
-              ],
-              "filters": {},
-              "aggregate": true,
-              "allow_fanout": false,
-              "order_by": [
-                {
-                  "column": "fair_value",
-                  "desc": true
                 },
                 {
-                  "column": "dim_rating.rating",
+                  "column": "unrealized",
+                  "desc": false
+                },
+                {
+                  "column": "cost_basis",
+                  "desc": false
+                },
+                {
+                  "column": "positions",
+                  "desc": false
+                },
+                {
+                  "column": "mark",
                   "desc": false
                 }
               ]
@@ -716,7 +812,7 @@
           }
         }
       ],
-      "dataset_fingerprint": "f634a7f791d78b76ee457af04780285de730c40bd69dbda37feaf295089a0226",
+      "dataset_fingerprint": "544a96a59b2b44fedb67f567216e9c7cb3c4e08a22549509d1677d00aea8c446",
       "columns": null,
       "max_rows": null
     },
@@ -738,7 +834,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.864601+00:00",
+          "timestamp": "2026-10-30T16:48:07.215030+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -753,34 +849,13 @@
         },
         {
           "operation": "load",
-          "description": "Loaded 'dim_issuer' from connector 'warehouse'",
-          "connector": {
-            "connector_name": "warehouse",
-            "connector_type": "DuckDBConnector"
-          },
-          "source": "dim_issuer",
-          "timestamp": "2026-10-24T02:22:42.869082+00:00",
-          "metadata": {
-            "rows_loaded": 13,
-            "filter": null,
-            "columns": null,
-            "pushdown": false,
-            "input": {
-              "table": "dim_issuer",
-              "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
-              "rows": 13
-            }
-          }
-        },
-        {
-          "operation": "load",
           "description": "Loaded 'dim_fund' from connector 'warehouse'",
           "connector": {
             "connector_name": "warehouse",
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_fund",
-          "timestamp": "2026-10-24T02:22:42.870544+00:00",
+          "timestamp": "2026-10-30T16:48:07.221757+00:00",
           "metadata": {
             "rows_loaded": 3,
             "filter": null,
@@ -794,17 +869,24 @@
           }
         },
         {
-          "operation": "join",
-          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
-          "connector": null,
-          "source": null,
-          "timestamp": "2026-10-24T02:22:42.875277+00:00",
+          "operation": "load",
+          "description": "Loaded 'dim_issuer' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_issuer",
+          "timestamp": "2026-10-30T16:48:07.223210+00:00",
           "metadata": {
-            "fact": "fact_holdings",
-            "dimension": "dim_issuer",
-            "fact_key": "issuer_id",
-            "dim_key": "issuer_id",
-            "engine": "duckdb"
+            "rows_loaded": 13,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_issuer",
+              "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
+              "rows": 13
+            }
           }
         },
         {
@@ -812,7 +894,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_fund' on fund_id = fund_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.875296+00:00",
+          "timestamp": "2026-10-30T16:48:07.229362+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_fund",
@@ -822,19 +904,33 @@
           }
         },
         {
-          "operation": "sort",
-          "description": "Ordered by dim_issuer.sector, dim_fund.fund, fair_value",
+          "operation": "join",
+          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.885748+00:00",
+          "timestamp": "2026-10-30T16:48:07.229383+00:00",
+          "metadata": {
+            "fact": "fact_holdings",
+            "dimension": "dim_issuer",
+            "fact_key": "issuer_id",
+            "dim_key": "issuer_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "sort",
+          "description": "Ordered by dim_fund.fund, dim_issuer.sector, fair_value",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.241397+00:00",
           "metadata": {
             "order_by": [
               {
-                "column": "dim_issuer.sector",
+                "column": "dim_fund.fund",
                 "desc": false
               },
               {
-                "column": "dim_fund.fund",
+                "column": "dim_issuer.sector",
                 "desc": false
               },
               {
@@ -850,7 +946,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.885777+00:00",
+          "timestamp": "2026-10-30T16:48:07.241419+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -874,11 +970,11 @@
               "allow_fanout": false,
               "order_by": [
                 {
-                  "column": "dim_issuer.sector",
+                  "column": "dim_fund.fund",
                   "desc": false
                 },
                 {
-                  "column": "dim_fund.fund",
+                  "column": "dim_issuer.sector",
                   "desc": false
                 },
                 {
@@ -890,18 +986,18 @@
           }
         }
       ],
-      "dataset_fingerprint": "2ff713e86f44f998293a49d4c927cd4643a5caf6781d4b76f9bd6de20688d67d",
+      "dataset_fingerprint": "2a165266fb78b76fb169c19db2be5980fe193a04526c94cd07ae8d6339b8cb20",
       "columns": null,
       "max_rows": null
     },
     {
       "section_type": "table",
-      "title": "holdings_detail",
-      "id": "holdings_detail",
+      "title": "by_rating",
+      "id": "by_rating",
       "dataset_name": "fact_holdings_result",
       "dataset_shape": [
-        13,
-        5
+        7,
+        8
       ],
       "dataset_lineage": [
         {
@@ -912,7 +1008,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.903881+00:00",
+          "timestamp": "2026-10-30T16:48:07.262853+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -927,59 +1023,66 @@
         },
         {
           "operation": "assign",
-          "description": "Derived measure column(s): cost_basis = cost",
+          "description": "Derived measure column(s): positions = holding_id, spread_x_par = spread_bps * par, par_amount = par, cost_basis = cost",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.905306+00:00",
+          "timestamp": "2026-10-30T16:48:07.265103+00:00",
           "metadata": {
             "derived": {
+              "positions": "holding_id",
+              "spread_x_par": "spread_bps * par",
+              "par_amount": "par",
               "cost_basis": "cost"
             }
           }
         },
         {
           "operation": "load",
-          "description": "Loaded 'dim_issuer' from connector 'warehouse'",
+          "description": "Loaded 'dim_rating' from connector 'warehouse'",
           "connector": {
             "connector_name": "warehouse",
             "connector_type": "DuckDBConnector"
           },
-          "source": "dim_issuer",
-          "timestamp": "2026-10-24T02:22:42.910426+00:00",
+          "source": "dim_rating",
+          "timestamp": "2026-10-30T16:48:07.273559+00:00",
           "metadata": {
-            "rows_loaded": 13,
+            "rows_loaded": 9,
             "filter": null,
             "columns": null,
             "pushdown": false,
             "input": {
-              "table": "dim_issuer",
-              "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
-              "rows": 13
+              "table": "dim_rating",
+              "fingerprint": "ce56858e94bceb16f7e0e9096e3863338ca9a50e9043b958f986d67b5f30dad9",
+              "rows": 9
             }
           }
         },
         {
           "operation": "join",
-          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
+          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_rating' on rating_id = rating_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.912958+00:00",
+          "timestamp": "2026-10-30T16:48:07.276603+00:00",
           "metadata": {
             "fact": "fact_holdings",
-            "dimension": "dim_issuer",
-            "fact_key": "issuer_id",
-            "dim_key": "issuer_id",
+            "dimension": "dim_rating",
+            "fact_key": "rating_id",
+            "dim_key": "rating_id",
             "engine": "duckdb"
           }
         },
         {
           "operation": "assign",
-          "description": "Ratio measure(s): mark = fair_value / cost_basis",
+          "description": "Ratio measure(s): wtd_spread_bps = spread_x_par / par_amount, mark = fair_value / cost_basis",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.922666+00:00",
+          "timestamp": "2026-10-30T16:48:07.285430+00:00",
           "metadata": {
             "ratios": {
+              "wtd_spread_bps": [
+                "spread_x_par",
+                "par_amount"
+              ],
               "mark": [
                 "fair_value",
                 "cost_basis"
@@ -989,26 +1092,38 @@
         },
         {
           "operation": "sort",
-          "description": "Ordered by fair_value desc, dim_issuer.issuer, dim_issuer.sector, cost_basis, mark",
+          "description": "Ordered by dim_rating.rating, fair_value, positions, spread_x_par, par_amount, cost_basis, wtd_spread_bps, mark",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.924925+00:00",
+          "timestamp": "2026-10-30T16:48:07.287376+00:00",
           "metadata": {
             "order_by": [
               {
-                "column": "fair_value",
-                "desc": true
-              },
-              {
-                "column": "dim_issuer.issuer",
+                "column": "dim_rating.rating",
                 "desc": false
               },
               {
-                "column": "dim_issuer.sector",
+                "column": "fair_value",
+                "desc": false
+              },
+              {
+                "column": "positions",
+                "desc": false
+              },
+              {
+                "column": "spread_x_par",
+                "desc": false
+              },
+              {
+                "column": "par_amount",
                 "desc": false
               },
               {
                 "column": "cost_basis",
+                "desc": false
+              },
+              {
+                "column": "wtd_spread_bps",
                 "desc": false
               },
               {
@@ -1024,14 +1139,17 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.924945+00:00",
+          "timestamp": "2026-10-30T16:48:07.287398+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
             "fingerprint_algo": 2,
-            "rows_out": 13,
+            "rows_out": 7,
             "measures": {
               "fair_value": "sum",
+              "positions": "count",
+              "spread_x_par": "sum",
+              "par_amount": "sum",
               "cost_basis": "sum"
             },
             "model": "portfolio_model",
@@ -1039,12 +1157,544 @@
               "fact": "fact_holdings",
               "measures": [
                 "fair_value",
-                "cost_basis",
+                "positions",
+                "wtd_spread_bps",
                 "mark"
               ],
               "dimensions": [
+                "dim_rating.rating"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false,
+              "order_by": [
+                {
+                  "column": "dim_rating.rating",
+                  "desc": false
+                },
+                {
+                  "column": "fair_value",
+                  "desc": false
+                },
+                {
+                  "column": "positions",
+                  "desc": false
+                },
+                {
+                  "column": "spread_x_par",
+                  "desc": false
+                },
+                {
+                  "column": "par_amount",
+                  "desc": false
+                },
+                {
+                  "column": "cost_basis",
+                  "desc": false
+                },
+                {
+                  "column": "wtd_spread_bps",
+                  "desc": false
+                },
+                {
+                  "column": "mark",
+                  "desc": false
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "49f8db36738b782fb65333d5be232f3c9619d39af874e1b7feb8f1c84a4df8dd",
+      "columns": null,
+      "max_rows": null
+    },
+    {
+      "section_type": "table",
+      "title": "rating_watch",
+      "id": "rating_watch",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        9,
+        3
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_holdings' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_holdings",
+          "timestamp": "2026-10-30T16:48:07.307581+00:00",
+          "metadata": {
+            "rows_loaded": 25,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_holdings",
+              "fingerprint": "9862ad1f4acf91db1d7304ab9d81c90ee5f5ae109b8fedc0c364574658080faf",
+              "rows": 25
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_rating' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_rating",
+          "timestamp": "2026-10-30T16:48:07.311639+00:00",
+          "metadata": {
+            "rows_loaded": 9,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_rating",
+              "fingerprint": "ce56858e94bceb16f7e0e9096e3863338ca9a50e9043b958f986d67b5f30dad9",
+              "rows": 9
+            }
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_rating' on rating_id = rating_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.314535+00:00",
+          "metadata": {
+            "fact": "fact_holdings",
+            "dimension": "dim_rating",
+            "fact_key": "rating_id",
+            "dim_key": "rating_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "sort",
+          "description": "Ordered by dim_rating.rating, dim_rating.watch, fair_value",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.322809+00:00",
+          "metadata": {
+            "order_by": [
+              {
+                "column": "dim_rating.rating",
+                "desc": false
+              },
+              {
+                "column": "dim_rating.watch",
+                "desc": false
+              },
+              {
+                "column": "fair_value",
+                "desc": false
+              }
+            ],
+            "limit": null
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.322830+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "engine_version": "1.5.6",
+            "fingerprint_algo": 2,
+            "rows_out": 9,
+            "measures": {
+              "fair_value": "sum"
+            },
+            "model": "portfolio_model",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": [
+                "fair_value"
+              ],
+              "dimensions": [
+                "dim_rating.rating",
+                "dim_rating.watch"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false,
+              "order_by": [
+                {
+                  "column": "dim_rating.rating",
+                  "desc": false
+                },
+                {
+                  "column": "dim_rating.watch",
+                  "desc": false
+                },
+                {
+                  "column": "fair_value",
+                  "desc": false
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "dde7728346380ef040b450e9189dec9d51d13d3bf82173013b3e2f16124131b3",
+      "columns": null,
+      "max_rows": null
+    },
+    {
+      "section_type": "table",
+      "title": "watched",
+      "id": "watched",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        1,
+        2
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_holdings' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_holdings",
+          "timestamp": "2026-10-30T16:48:07.343959+00:00",
+          "metadata": {
+            "rows_loaded": 25,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_holdings",
+              "fingerprint": "9862ad1f4acf91db1d7304ab9d81c90ee5f5ae109b8fedc0c364574658080faf",
+              "rows": 25
+            }
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Derived measure column(s): positions = holding_id",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.345794+00:00",
+          "metadata": {
+            "derived": {
+              "positions": "holding_id"
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_rating' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_rating",
+          "timestamp": "2026-10-30T16:48:07.350557+00:00",
+          "metadata": {
+            "rows_loaded": 9,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_rating",
+              "fingerprint": "ce56858e94bceb16f7e0e9096e3863338ca9a50e9043b958f986d67b5f30dad9",
+              "rows": 9
+            }
+          }
+        },
+        {
+          "operation": "filter",
+          "description": "Filter: dim_rating.watch eq 'yes'",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.354292+00:00",
+          "metadata": {
+            "target": "dim_rating.watch",
+            "operator": "eq",
+            "value": "yes",
+            "on": "dimension",
+            "pushed_down": false
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_rating' on rating_id = rating_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.354344+00:00",
+          "metadata": {
+            "fact": "fact_holdings",
+            "dimension": "dim_rating",
+            "fact_key": "rating_id",
+            "dim_key": "rating_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.360429+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "engine_version": "1.5.6",
+            "fingerprint_algo": 2,
+            "rows_out": 1,
+            "measures": {
+              "fair_value": "sum",
+              "positions": "count"
+            },
+            "model": "portfolio_model",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": [
+                "fair_value",
+                "positions"
+              ],
+              "dimensions": [],
+              "filters": {
+                "dim_rating.watch": "yes"
+              },
+              "aggregate": true,
+              "allow_fanout": false
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "7902b301dad2971acbaadb55768480619b78acd5a54ffd4388cdaa24484eb28c",
+      "columns": null,
+      "max_rows": null
+    },
+    {
+      "section_type": "table",
+      "title": "holdings_detail",
+      "id": "holdings_detail",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        13,
+        10
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_holdings' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_holdings",
+          "timestamp": "2026-10-30T16:48:07.389400+00:00",
+          "metadata": {
+            "rows_loaded": 25,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_holdings",
+              "fingerprint": "9862ad1f4acf91db1d7304ab9d81c90ee5f5ae109b8fedc0c364574658080faf",
+              "rows": 25
+            }
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Derived measure column(s): cost_basis = cost, unrealized = fair_value - cost, spread_x_par = spread_bps * par, par_amount = par",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.393335+00:00",
+          "metadata": {
+            "derived": {
+              "cost_basis": "cost",
+              "unrealized": "fair_value - cost",
+              "spread_x_par": "spread_bps * par",
+              "par_amount": "par"
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_rating' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_rating",
+          "timestamp": "2026-10-30T16:48:07.403034+00:00",
+          "metadata": {
+            "rows_loaded": 9,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_rating",
+              "fingerprint": "ce56858e94bceb16f7e0e9096e3863338ca9a50e9043b958f986d67b5f30dad9",
+              "rows": 9
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_issuer' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_issuer",
+          "timestamp": "2026-10-30T16:48:07.404845+00:00",
+          "metadata": {
+            "rows_loaded": 13,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_issuer",
+              "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
+              "rows": 13
+            }
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_rating' on rating_id = rating_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.410895+00:00",
+          "metadata": {
+            "fact": "fact_holdings",
+            "dimension": "dim_rating",
+            "fact_key": "rating_id",
+            "dim_key": "rating_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.410920+00:00",
+          "metadata": {
+            "fact": "fact_holdings",
+            "dimension": "dim_issuer",
+            "fact_key": "issuer_id",
+            "dim_key": "issuer_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Ratio measure(s): mark = fair_value / cost_basis, wtd_spread_bps = spread_x_par / par_amount",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.424883+00:00",
+          "metadata": {
+            "ratios": {
+              "mark": [
+                "fair_value",
+                "cost_basis"
+              ],
+              "wtd_spread_bps": [
+                "spread_x_par",
+                "par_amount"
+              ]
+            }
+          }
+        },
+        {
+          "operation": "sort",
+          "description": "Ordered by fair_value desc, dim_issuer.issuer, dim_issuer.sector, dim_rating.rating, cost_basis, unrealized, spread_x_par, par_amount, mark, wtd_spread_bps",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.429733+00:00",
+          "metadata": {
+            "order_by": [
+              {
+                "column": "fair_value",
+                "desc": true
+              },
+              {
+                "column": "dim_issuer.issuer",
+                "desc": false
+              },
+              {
+                "column": "dim_issuer.sector",
+                "desc": false
+              },
+              {
+                "column": "dim_rating.rating",
+                "desc": false
+              },
+              {
+                "column": "cost_basis",
+                "desc": false
+              },
+              {
+                "column": "unrealized",
+                "desc": false
+              },
+              {
+                "column": "spread_x_par",
+                "desc": false
+              },
+              {
+                "column": "par_amount",
+                "desc": false
+              },
+              {
+                "column": "mark",
+                "desc": false
+              },
+              {
+                "column": "wtd_spread_bps",
+                "desc": false
+              }
+            ],
+            "limit": null
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.429762+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "engine_version": "1.5.6",
+            "fingerprint_algo": 2,
+            "rows_out": 13,
+            "measures": {
+              "fair_value": "sum",
+              "cost_basis": "sum",
+              "unrealized": "sum",
+              "spread_x_par": "sum",
+              "par_amount": "sum"
+            },
+            "model": "portfolio_model",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": [
+                "fair_value",
+                "cost_basis",
+                "unrealized",
+                "mark",
+                "wtd_spread_bps"
+              ],
+              "dimensions": [
                 "dim_issuer.issuer",
-                "dim_issuer.sector"
+                "dim_issuer.sector",
+                "dim_rating.rating"
               ],
               "filters": {},
               "aggregate": true,
@@ -1063,11 +1713,31 @@
                   "desc": false
                 },
                 {
+                  "column": "dim_rating.rating",
+                  "desc": false
+                },
+                {
                   "column": "cost_basis",
                   "desc": false
                 },
                 {
+                  "column": "unrealized",
+                  "desc": false
+                },
+                {
+                  "column": "spread_x_par",
+                  "desc": false
+                },
+                {
+                  "column": "par_amount",
+                  "desc": false
+                },
+                {
                   "column": "mark",
+                  "desc": false
+                },
+                {
+                  "column": "wtd_spread_bps",
                   "desc": false
                 }
               ]
@@ -1075,7 +1745,7 @@
           }
         }
       ],
-      "dataset_fingerprint": "f4813bb62f2333b020ab4bf2373b0ce97c86fd037bf2e414ada0f4f27adcc401",
+      "dataset_fingerprint": "94a944669971ac73652dc81e7cdaee01fc1731d54834e449832e7545457c4054",
       "columns": null,
       "max_rows": null
     },
@@ -1086,7 +1756,7 @@
       "dataset_name": "fact_holdings_result",
       "dataset_shape": [
         1,
-        3
+        7
       ],
       "dataset_lineage": [
         {
@@ -1097,7 +1767,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.944025+00:00",
+          "timestamp": "2026-10-30T16:48:07.460247+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -1112,27 +1782,34 @@
         },
         {
           "operation": "assign",
-          "description": "Derived measure column(s): cost_basis = cost",
+          "description": "Derived measure column(s): cost_basis = cost, unrealized = fair_value - cost, spread_x_par = spread_bps * par, par_amount = par",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.945419+00:00",
+          "timestamp": "2026-10-30T16:48:07.464448+00:00",
           "metadata": {
             "derived": {
-              "cost_basis": "cost"
+              "cost_basis": "cost",
+              "unrealized": "fair_value - cost",
+              "spread_x_par": "spread_bps * par",
+              "par_amount": "par"
             }
           }
         },
         {
           "operation": "assign",
-          "description": "Ratio measure(s): mark = fair_value / cost_basis",
+          "description": "Ratio measure(s): mark = fair_value / cost_basis, wtd_spread_bps = spread_x_par / par_amount",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.954632+00:00",
+          "timestamp": "2026-10-30T16:48:07.482196+00:00",
           "metadata": {
             "ratios": {
               "mark": [
                 "fair_value",
                 "cost_basis"
+              ],
+              "wtd_spread_bps": [
+                "spread_x_par",
+                "par_amount"
               ]
             }
           }
@@ -1142,7 +1819,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.954662+00:00",
+          "timestamp": "2026-10-30T16:48:07.482233+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -1150,7 +1827,10 @@
             "rows_out": 1,
             "measures": {
               "fair_value": "sum",
-              "cost_basis": "sum"
+              "cost_basis": "sum",
+              "unrealized": "sum",
+              "spread_x_par": "sum",
+              "par_amount": "sum"
             },
             "model": "portfolio_model",
             "query_spec": {
@@ -1158,7 +1838,9 @@
               "measures": [
                 "fair_value",
                 "cost_basis",
-                "mark"
+                "unrealized",
+                "mark",
+                "wtd_spread_bps"
               ],
               "dimensions": [],
               "filters": {},
@@ -1168,7 +1850,215 @@
           }
         }
       ],
-      "dataset_fingerprint": "3af18797bb05e8612224d922dc49d777d2b949b5d1ce88b7becaa3b3b6240d8a",
+      "dataset_fingerprint": "d650fda7f1eb66067deec3fb065a12d196c4c2029830c285ac8cf213f8c3d783",
+      "columns": null,
+      "max_rows": null
+    },
+    {
+      "section_type": "table",
+      "title": "issuer_fv",
+      "id": "issuer_fv",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        13,
+        7
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_holdings' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_holdings",
+          "timestamp": "2026-10-30T16:48:07.504492+00:00",
+          "metadata": {
+            "rows_loaded": 25,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_holdings",
+              "fingerprint": "9862ad1f4acf91db1d7304ab9d81c90ee5f5ae109b8fedc0c364574658080faf",
+              "rows": 25
+            }
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Derived measure column(s): cost_basis = cost, spread_x_par = spread_bps * par, par_amount = par",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.506427+00:00",
+          "metadata": {
+            "derived": {
+              "cost_basis": "cost",
+              "spread_x_par": "spread_bps * par",
+              "par_amount": "par"
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_issuer' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_issuer",
+          "timestamp": "2026-10-30T16:48:07.513322+00:00",
+          "metadata": {
+            "rows_loaded": 13,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_issuer",
+              "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
+              "rows": 13
+            }
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.516075+00:00",
+          "metadata": {
+            "fact": "fact_holdings",
+            "dimension": "dim_issuer",
+            "fact_key": "issuer_id",
+            "dim_key": "issuer_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Ratio measure(s): mark = fair_value / cost_basis, wtd_spread_bps = spread_x_par / par_amount",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.525380+00:00",
+          "metadata": {
+            "ratios": {
+              "mark": [
+                "fair_value",
+                "cost_basis"
+              ],
+              "wtd_spread_bps": [
+                "spread_x_par",
+                "par_amount"
+              ]
+            }
+          }
+        },
+        {
+          "operation": "sort",
+          "description": "Ordered by fair_value desc, dim_issuer.issuer, cost_basis, spread_x_par, par_amount, mark, wtd_spread_bps",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.527492+00:00",
+          "metadata": {
+            "order_by": [
+              {
+                "column": "fair_value",
+                "desc": true
+              },
+              {
+                "column": "dim_issuer.issuer",
+                "desc": false
+              },
+              {
+                "column": "cost_basis",
+                "desc": false
+              },
+              {
+                "column": "spread_x_par",
+                "desc": false
+              },
+              {
+                "column": "par_amount",
+                "desc": false
+              },
+              {
+                "column": "mark",
+                "desc": false
+              },
+              {
+                "column": "wtd_spread_bps",
+                "desc": false
+              }
+            ],
+            "limit": null
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.527512+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "engine_version": "1.5.6",
+            "fingerprint_algo": 2,
+            "rows_out": 13,
+            "measures": {
+              "fair_value": "sum",
+              "cost_basis": "sum",
+              "spread_x_par": "sum",
+              "par_amount": "sum"
+            },
+            "model": "portfolio_model",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": [
+                "fair_value",
+                "mark",
+                "wtd_spread_bps"
+              ],
+              "dimensions": [
+                "dim_issuer.issuer"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false,
+              "order_by": [
+                {
+                  "column": "fair_value",
+                  "desc": true
+                },
+                {
+                  "column": "dim_issuer.issuer",
+                  "desc": false
+                },
+                {
+                  "column": "cost_basis",
+                  "desc": false
+                },
+                {
+                  "column": "spread_x_par",
+                  "desc": false
+                },
+                {
+                  "column": "par_amount",
+                  "desc": false
+                },
+                {
+                  "column": "mark",
+                  "desc": false
+                },
+                {
+                  "column": "wtd_spread_bps",
+                  "desc": false
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "8b2297d30533be0e6c91946e5d3ae2c408885de94d06123e8223853c8b4115f3",
       "columns": null,
       "max_rows": null
     },
@@ -1190,7 +2080,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:42.972390+00:00",
+          "timestamp": "2026-10-30T16:48:07.548715+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -1211,7 +2101,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_issuer",
-          "timestamp": "2026-10-24T02:22:42.976471+00:00",
+          "timestamp": "2026-10-30T16:48:07.553161+00:00",
           "metadata": {
             "rows_loaded": 13,
             "filter": null,
@@ -1229,7 +2119,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.979402+00:00",
+          "timestamp": "2026-10-30T16:48:07.556296+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_issuer",
@@ -1243,7 +2133,7 @@
           "description": "Share measure(s): fv_share = fair_value / total(fair_value)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.987830+00:00",
+          "timestamp": "2026-10-30T16:48:07.564264+00:00",
           "metadata": {
             "shares": {
               "fv_share": "fair_value"
@@ -1255,7 +2145,7 @@
           "description": "Window measure(s): fv_rank = rank(fair_value desc), fv_cum_share = running(fv_share desc)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.992442+00:00",
+          "timestamp": "2026-10-30T16:48:07.569574+00:00",
           "metadata": {
             "ranks": {
               "fv_rank": "fair_value"
@@ -1271,7 +2161,7 @@
           "description": "Ordered by fv_rank, dim_issuer.issuer, fair_value, fv_share, fv_cum_share",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.993975+00:00",
+          "timestamp": "2026-10-30T16:48:07.571275+00:00",
           "metadata": {
             "order_by": [
               {
@@ -1303,7 +2193,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:42.993996+00:00",
+          "timestamp": "2026-10-30T16:48:07.571297+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -1362,7 +2252,7 @@
       "dataset_name": "fact_holdings_result",
       "dataset_shape": [
         8,
-        4
+        5
       ],
       "dataset_lineage": [
         {
@@ -1373,7 +2263,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_holdings",
-          "timestamp": "2026-10-24T02:22:43.012891+00:00",
+          "timestamp": "2026-10-30T16:48:07.593826+00:00",
           "metadata": {
             "rows_loaded": 25,
             "filter": null,
@@ -1391,7 +2281,7 @@
           "description": "Derived measure column(s): cost_basis = cost",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.014284+00:00",
+          "timestamp": "2026-10-30T16:48:07.595203+00:00",
           "metadata": {
             "derived": {
               "cost_basis": "cost"
@@ -1406,7 +2296,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_issuer",
-          "timestamp": "2026-10-24T02:22:43.019143+00:00",
+          "timestamp": "2026-10-30T16:48:07.600148+00:00",
           "metadata": {
             "rows_loaded": 13,
             "filter": null,
@@ -1424,7 +2314,7 @@
           "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.021928+00:00",
+          "timestamp": "2026-10-30T16:48:07.602923+00:00",
           "metadata": {
             "fact": "fact_holdings",
             "dimension": "dim_issuer",
@@ -1438,7 +2328,7 @@
           "description": "Ratio measure(s): mark = fair_value / cost_basis",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.031016+00:00",
+          "timestamp": "2026-10-30T16:48:07.611009+00:00",
           "metadata": {
             "ratios": {
               "mark": [
@@ -1449,11 +2339,23 @@
           }
         },
         {
-          "operation": "sort",
-          "description": "Ordered by fair_value desc, dim_issuer.issuer, cost_basis, mark, limit 8",
+          "operation": "assign",
+          "description": "Share measure(s): fv_share = fair_value / total(fair_value)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.033080+00:00",
+          "timestamp": "2026-10-30T16:48:07.611916+00:00",
+          "metadata": {
+            "shares": {
+              "fv_share": "fair_value"
+            }
+          }
+        },
+        {
+          "operation": "sort",
+          "description": "Ordered by fair_value desc, dim_issuer.issuer, cost_basis, mark, fv_share, limit 8",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.614182+00:00",
           "metadata": {
             "order_by": [
               {
@@ -1471,6 +2373,10 @@
               {
                 "column": "mark",
                 "desc": false
+              },
+              {
+                "column": "fv_share",
+                "desc": false
               }
             ],
             "limit": 8
@@ -1481,7 +2387,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.033101+00:00",
+          "timestamp": "2026-10-30T16:48:07.614203+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -1496,6 +2402,7 @@
               "fact": "fact_holdings",
               "measures": [
                 "fair_value",
+                "fv_share",
                 "mark"
               ],
               "dimensions": [
@@ -1520,6 +2427,10 @@
                 {
                   "column": "mark",
                   "desc": false
+                },
+                {
+                  "column": "fv_share",
+                  "desc": false
                 }
               ],
               "limit": 8
@@ -1527,7 +2438,7 @@
           }
         }
       ],
-      "dataset_fingerprint": "cdf9a35822eb9eb7231a60b2f4af327f51d23287e50b282e59adf6a8eaf1d060",
+      "dataset_fingerprint": "31df2a18e6ef0eb325420280b149e97e7a398d3a0d9548ab74370bc90d9a4524",
       "columns": null,
       "max_rows": null
     },
@@ -1549,7 +2460,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_cashflows",
-          "timestamp": "2026-10-24T02:22:43.055012+00:00",
+          "timestamp": "2026-10-30T16:48:07.637598+00:00",
           "metadata": {
             "rows_loaded": 62,
             "filter": null,
@@ -1567,7 +2478,7 @@
           "description": "Derived measure column(s): net_flow = amount, flow_count = cashflow_id",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.056398+00:00",
+          "timestamp": "2026-10-30T16:48:07.639352+00:00",
           "metadata": {
             "derived": {
               "net_flow": "amount",
@@ -1580,7 +2491,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.062147+00:00",
+          "timestamp": "2026-10-30T16:48:07.646026+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -1616,7 +2527,7 @@
       "dataset_name": "fact_cashflows_result",
       "dataset_shape": [
         8,
-        2
+        3
       ],
       "dataset_lineage": [
         {
@@ -1627,7 +2538,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_cashflows",
-          "timestamp": "2026-10-24T02:22:43.079742+00:00",
+          "timestamp": "2026-10-30T16:48:07.667124+00:00",
           "metadata": {
             "rows_loaded": 62,
             "filter": null,
@@ -1642,13 +2553,14 @@
         },
         {
           "operation": "assign",
-          "description": "Derived measure column(s): net_flow = amount",
+          "description": "Derived measure column(s): net_flow = amount, flow_count = cashflow_id",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.080815+00:00",
+          "timestamp": "2026-10-30T16:48:07.668376+00:00",
           "metadata": {
             "derived": {
-              "net_flow": "amount"
+              "net_flow": "amount",
+              "flow_count": "cashflow_id"
             }
           }
         },
@@ -1660,7 +2572,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_date",
-          "timestamp": "2026-10-24T02:22:43.086212+00:00",
+          "timestamp": "2026-10-30T16:48:07.673319+00:00",
           "metadata": {
             "rows_loaded": 12,
             "filter": null,
@@ -1678,7 +2590,7 @@
           "description": "Joined fact 'fact_cashflows' \u2192 dim 'dim_date' on flow_date = flow_date (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.090494+00:00",
+          "timestamp": "2026-10-30T16:48:07.676711+00:00",
           "metadata": {
             "fact": "fact_cashflows",
             "dimension": "dim_date",
@@ -1689,10 +2601,10 @@
         },
         {
           "operation": "sort",
-          "description": "Ordered by dim_date.month, net_flow",
+          "description": "Ordered by dim_date.month, net_flow, flow_count",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.100530+00:00",
+          "timestamp": "2026-10-30T16:48:07.684788+00:00",
           "metadata": {
             "order_by": [
               {
@@ -1701,6 +2613,10 @@
               },
               {
                 "column": "net_flow",
+                "desc": false
+              },
+              {
+                "column": "flow_count",
                 "desc": false
               }
             ],
@@ -1712,14 +2628,15 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.102541+00:00",
+          "timestamp": "2026-10-30T16:48:07.685827+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
             "fingerprint_algo": 2,
             "rows_out": 8,
             "measures": {
-              "net_flow": "sum"
+              "net_flow": "sum",
+              "flow_count": "count"
             },
             "time_labels": {
               "dim_date.month": "month"
@@ -1728,7 +2645,8 @@
             "query_spec": {
               "fact": "fact_cashflows",
               "measures": [
-                "net_flow"
+                "net_flow",
+                "flow_count"
               ],
               "dimensions": [
                 "dim_date.month"
@@ -1744,13 +2662,170 @@
                 {
                   "column": "net_flow",
                   "desc": false
+                },
+                {
+                  "column": "flow_count",
+                  "desc": false
                 }
               ]
             }
           }
         }
       ],
-      "dataset_fingerprint": "a28c35b043f467823a93898fffa3f1b2ae51d3f9a6f26ffb068912215ebceed6",
+      "dataset_fingerprint": "745973dfd70e3270086e99bfe28cecfa159d3ba2964fc521f418fa3a23c6604f",
+      "columns": null,
+      "max_rows": null
+    },
+    {
+      "section_type": "table",
+      "title": "flows_by_type",
+      "id": "flows_by_type",
+      "dataset_name": "fact_cashflows_result",
+      "dataset_shape": [
+        3,
+        3
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_cashflows' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_cashflows",
+          "timestamp": "2026-10-30T16:48:07.705521+00:00",
+          "metadata": {
+            "rows_loaded": 62,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_cashflows",
+              "fingerprint": "c313d4f72ec1f45e6b45c50e553f64c4daf2d719cc5a216dca7111fb18567906",
+              "rows": 62
+            }
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Derived measure column(s): net_flow = amount, flow_count = cashflow_id",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.706558+00:00",
+          "metadata": {
+            "derived": {
+              "net_flow": "amount",
+              "flow_count": "cashflow_id"
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_flow_type' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_flow_type",
+          "timestamp": "2026-10-30T16:48:07.711563+00:00",
+          "metadata": {
+            "rows_loaded": 3,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_flow_type",
+              "fingerprint": "ebcc07dbb0a38cbd69da5ac93bf3aef46c8d1a43e67d0cb216d7370349018576",
+              "rows": 3
+            }
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_cashflows' \u2192 dim 'dim_flow_type' on flow_type_id = flow_type_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.714364+00:00",
+          "metadata": {
+            "fact": "fact_cashflows",
+            "dimension": "dim_flow_type",
+            "fact_key": "flow_type_id",
+            "dim_key": "flow_type_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "sort",
+          "description": "Ordered by net_flow desc, dim_flow_type.flow_type, flow_count",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.722017+00:00",
+          "metadata": {
+            "order_by": [
+              {
+                "column": "net_flow",
+                "desc": true
+              },
+              {
+                "column": "dim_flow_type.flow_type",
+                "desc": false
+              },
+              {
+                "column": "flow_count",
+                "desc": false
+              }
+            ],
+            "limit": null
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.722042+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "engine_version": "1.5.6",
+            "fingerprint_algo": 2,
+            "rows_out": 3,
+            "measures": {
+              "net_flow": "sum",
+              "flow_count": "count"
+            },
+            "model": "portfolio_model",
+            "query_spec": {
+              "fact": "fact_cashflows",
+              "measures": [
+                "net_flow",
+                "flow_count"
+              ],
+              "dimensions": [
+                "dim_flow_type.flow_type"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false,
+              "order_by": [
+                {
+                  "column": "net_flow",
+                  "desc": true
+                },
+                {
+                  "column": "dim_flow_type.flow_type",
+                  "desc": false
+                },
+                {
+                  "column": "flow_count",
+                  "desc": false
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "de80fc783765a712d04adcbf9acd9d21db3ddcc62351ffee8e756458fd63ac89",
       "columns": null,
       "max_rows": null
     },
@@ -1772,7 +2847,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "fact_cashflows",
-          "timestamp": "2026-10-24T02:22:43.120627+00:00",
+          "timestamp": "2026-10-30T16:48:07.741767+00:00",
           "metadata": {
             "rows_loaded": 62,
             "filter": null,
@@ -1790,32 +2865,11 @@
           "description": "Derived measure column(s): net_flow = amount, flow_count = cashflow_id",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.121861+00:00",
+          "timestamp": "2026-10-30T16:48:07.742969+00:00",
           "metadata": {
             "derived": {
               "net_flow": "amount",
               "flow_count": "cashflow_id"
-            }
-          }
-        },
-        {
-          "operation": "load",
-          "description": "Loaded 'dim_flow_type' from connector 'warehouse'",
-          "connector": {
-            "connector_name": "warehouse",
-            "connector_type": "DuckDBConnector"
-          },
-          "source": "dim_flow_type",
-          "timestamp": "2026-10-24T02:22:43.127581+00:00",
-          "metadata": {
-            "rows_loaded": 3,
-            "filter": null,
-            "columns": null,
-            "pushdown": false,
-            "input": {
-              "table": "dim_flow_type",
-              "fingerprint": "ebcc07dbb0a38cbd69da5ac93bf3aef46c8d1a43e67d0cb216d7370349018576",
-              "rows": 3
             }
           }
         },
@@ -1827,7 +2881,7 @@
             "connector_type": "DuckDBConnector"
           },
           "source": "dim_fund",
-          "timestamp": "2026-10-24T02:22:43.128986+00:00",
+          "timestamp": "2026-10-30T16:48:07.746263+00:00",
           "metadata": {
             "rows_loaded": 3,
             "filter": null,
@@ -1841,17 +2895,24 @@
           }
         },
         {
-          "operation": "join",
-          "description": "Joined fact 'fact_cashflows' \u2192 dim 'dim_flow_type' on flow_type_id = flow_type_id (left)",
-          "connector": null,
-          "source": null,
-          "timestamp": "2026-10-24T02:22:43.133471+00:00",
+          "operation": "load",
+          "description": "Loaded 'dim_flow_type' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_flow_type",
+          "timestamp": "2026-10-30T16:48:07.747764+00:00",
           "metadata": {
-            "fact": "fact_cashflows",
-            "dimension": "dim_flow_type",
-            "fact_key": "flow_type_id",
-            "dim_key": "flow_type_id",
-            "engine": "duckdb"
+            "rows_loaded": 3,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_flow_type",
+              "fingerprint": "ebcc07dbb0a38cbd69da5ac93bf3aef46c8d1a43e67d0cb216d7370349018576",
+              "rows": 3
+            }
           }
         },
         {
@@ -1859,7 +2920,7 @@
           "description": "Joined fact 'fact_cashflows' \u2192 dim 'dim_fund' on fund_id = fund_id (left)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.133487+00:00",
+          "timestamp": "2026-10-30T16:48:07.751853+00:00",
           "metadata": {
             "fact": "fact_cashflows",
             "dimension": "dim_fund",
@@ -1869,11 +2930,25 @@
           }
         },
         {
+          "operation": "join",
+          "description": "Joined fact 'fact_cashflows' \u2192 dim 'dim_flow_type' on flow_type_id = flow_type_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:07.751883+00:00",
+          "metadata": {
+            "fact": "fact_cashflows",
+            "dimension": "dim_flow_type",
+            "fact_key": "flow_type_id",
+            "dim_key": "flow_type_id",
+            "engine": "duckdb"
+          }
+        },
+        {
           "operation": "sort",
           "description": "Ordered by dim_fund.fund, dim_flow_type.flow_type, net_flow, flow_count",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.144428+00:00",
+          "timestamp": "2026-10-30T16:48:07.760849+00:00",
           "metadata": {
             "order_by": [
               {
@@ -1901,7 +2976,7 @@
           "description": "Star-schema query executed via duckdb",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.144450+00:00",
+          "timestamp": "2026-10-30T16:48:07.760879+00:00",
           "metadata": {
             "engine": "duckdb",
             "engine_version": "1.5.6",
@@ -1966,7 +3041,7 @@
           "description": "report.py output (python-derived)",
           "connector": null,
           "source": null,
-          "timestamp": "2026-10-24T02:22:43.148306+00:00",
+          "timestamp": "2026-10-30T16:48:07.765687+00:00",
           "metadata": {
             "python_derived": true
           }
@@ -1981,45 +3056,21 @@
   "embedded_data": [
     {
       "name": "kpis",
-      "embedded_sha256": "ea55a070ee468d62a85a903d52ac20f78d9d2823eb160f806ac299bd487c220a",
+      "embedded_sha256": "f1abefad59bd3eb56cc3c966dee74dfe62bc520701a05a7e2440287bd2fdf33c",
       "query_spec": {
         "fact": "fact_holdings",
         "measures": [
           "fair_value",
+          "unrealized",
+          "mark",
           "positions",
-          "mark"
+          "wtd_spread_bps",
+          "spread_p90"
         ],
         "dimensions": [],
         "filters": {},
         "aggregate": true,
         "allow_fanout": false
-      },
-      "model": "portfolio_model"
-    },
-    {
-      "name": "by_sector",
-      "embedded_sha256": "ef244f51f80820bcf641fe242790adedee7d8270af7d07b51574245b78203928",
-      "query_spec": {
-        "fact": "fact_holdings",
-        "measures": [
-          "fair_value"
-        ],
-        "dimensions": [
-          "dim_issuer.sector"
-        ],
-        "filters": {},
-        "aggregate": true,
-        "allow_fanout": false,
-        "order_by": [
-          {
-            "column": "fair_value",
-            "desc": true
-          },
-          {
-            "column": "dim_issuer.sector",
-            "desc": false
-          }
-        ]
       },
       "model": "portfolio_model"
     },
@@ -2057,27 +3108,94 @@
       "model": "portfolio_model"
     },
     {
-      "name": "gain",
-      "embedded_sha256": "80f1f2b286509fca72fe4494389fe3f8b1852251563c7e3f1e6a5d79c367cbbb",
+      "name": "top_issuer",
+      "embedded_sha256": "bc6de86d0e5868a25325cc5e8572a156994105a2e5c2b8eed332d3bdb476058d",
       "query_spec": {
         "fact": "fact_holdings",
         "measures": [
-          "unrealized"
+          "fair_value",
+          "fv_share"
         ],
-        "dimensions": [],
+        "dimensions": [
+          "dim_issuer.issuer"
+        ],
         "filters": {},
         "aggregate": true,
-        "allow_fanout": false
+        "allow_fanout": false,
+        "order_by": [
+          {
+            "column": "fair_value",
+            "desc": true
+          },
+          {
+            "column": "dim_issuer.issuer",
+            "desc": false
+          },
+          {
+            "column": "fv_share",
+            "desc": false
+          }
+        ],
+        "limit": 1
+      },
+      "model": "portfolio_model"
+    },
+    {
+      "name": "by_sector",
+      "embedded_sha256": "d5284af3bae6ca4b89d6db4e6dc8ebf3dd087e50637a5137a6c1614338d0c54c",
+      "query_spec": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fair_value",
+          "unrealized",
+          "mark",
+          "positions"
+        ],
+        "dimensions": [
+          "dim_issuer.sector"
+        ],
+        "filters": {},
+        "aggregate": true,
+        "allow_fanout": false,
+        "order_by": [
+          {
+            "column": "fair_value",
+            "desc": true
+          },
+          {
+            "column": "dim_issuer.sector",
+            "desc": false
+          },
+          {
+            "column": "unrealized",
+            "desc": false
+          },
+          {
+            "column": "cost_basis",
+            "desc": false
+          },
+          {
+            "column": "positions",
+            "desc": false
+          },
+          {
+            "column": "mark",
+            "desc": false
+          }
+        ]
       },
       "model": "portfolio_model"
     },
     {
       "name": "by_fund",
-      "embedded_sha256": "e65c4726930bcbaa396aa8487e3f83ca85f5f5796beae16a8853fed7ca37cec4",
+      "embedded_sha256": "544a96a59b2b44fedb67f567216e9c7cb3c4e08a22549509d1677d00aea8c446",
       "query_spec": {
         "fact": "fact_holdings",
         "measures": [
-          "fair_value"
+          "fair_value",
+          "unrealized",
+          "mark",
+          "positions"
         ],
         "dimensions": [
           "dim_fund.fund"
@@ -2093,32 +3211,21 @@
           {
             "column": "dim_fund.fund",
             "desc": false
-          }
-        ]
-      },
-      "model": "portfolio_model"
-    },
-    {
-      "name": "by_rating",
-      "embedded_sha256": "f634a7f791d78b76ee457af04780285de730c40bd69dbda37feaf295089a0226",
-      "query_spec": {
-        "fact": "fact_holdings",
-        "measures": [
-          "fair_value"
-        ],
-        "dimensions": [
-          "dim_rating.rating"
-        ],
-        "filters": {},
-        "aggregate": true,
-        "allow_fanout": false,
-        "order_by": [
-          {
-            "column": "fair_value",
-            "desc": true
           },
           {
-            "column": "dim_rating.rating",
+            "column": "unrealized",
+            "desc": false
+          },
+          {
+            "column": "cost_basis",
+            "desc": false
+          },
+          {
+            "column": "positions",
+            "desc": false
+          },
+          {
+            "column": "mark",
             "desc": false
           }
         ]
@@ -2127,7 +3234,7 @@
     },
     {
       "name": "fund_sector",
-      "embedded_sha256": "2ff713e86f44f998293a49d4c927cd4643a5caf6781d4b76f9bd6de20688d67d",
+      "embedded_sha256": "2a165266fb78b76fb169c19db2be5980fe193a04526c94cd07ae8d6339b8cb20",
       "query_spec": {
         "fact": "fact_holdings",
         "measures": [
@@ -2142,11 +3249,11 @@
         "allow_fanout": false,
         "order_by": [
           {
-            "column": "dim_issuer.sector",
+            "column": "dim_fund.fund",
             "desc": false
           },
           {
-            "column": "dim_fund.fund",
+            "column": "dim_issuer.sector",
             "desc": false
           },
           {
@@ -2158,18 +3265,125 @@
       "model": "portfolio_model"
     },
     {
+      "name": "by_rating",
+      "embedded_sha256": "49f8db36738b782fb65333d5be232f3c9619d39af874e1b7feb8f1c84a4df8dd",
+      "query_spec": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fair_value",
+          "positions",
+          "wtd_spread_bps",
+          "mark"
+        ],
+        "dimensions": [
+          "dim_rating.rating"
+        ],
+        "filters": {},
+        "aggregate": true,
+        "allow_fanout": false,
+        "order_by": [
+          {
+            "column": "dim_rating.rating",
+            "desc": false
+          },
+          {
+            "column": "fair_value",
+            "desc": false
+          },
+          {
+            "column": "positions",
+            "desc": false
+          },
+          {
+            "column": "spread_x_par",
+            "desc": false
+          },
+          {
+            "column": "par_amount",
+            "desc": false
+          },
+          {
+            "column": "cost_basis",
+            "desc": false
+          },
+          {
+            "column": "wtd_spread_bps",
+            "desc": false
+          },
+          {
+            "column": "mark",
+            "desc": false
+          }
+        ]
+      },
+      "model": "portfolio_model"
+    },
+    {
+      "name": "rating_watch",
+      "embedded_sha256": "dde7728346380ef040b450e9189dec9d51d13d3bf82173013b3e2f16124131b3",
+      "query_spec": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fair_value"
+        ],
+        "dimensions": [
+          "dim_rating.rating",
+          "dim_rating.watch"
+        ],
+        "filters": {},
+        "aggregate": true,
+        "allow_fanout": false,
+        "order_by": [
+          {
+            "column": "dim_rating.rating",
+            "desc": false
+          },
+          {
+            "column": "dim_rating.watch",
+            "desc": false
+          },
+          {
+            "column": "fair_value",
+            "desc": false
+          }
+        ]
+      },
+      "model": "portfolio_model"
+    },
+    {
+      "name": "watched",
+      "embedded_sha256": "7902b301dad2971acbaadb55768480619b78acd5a54ffd4388cdaa24484eb28c",
+      "query_spec": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fair_value",
+          "positions"
+        ],
+        "dimensions": [],
+        "filters": {
+          "dim_rating.watch": "yes"
+        },
+        "aggregate": true,
+        "allow_fanout": false
+      },
+      "model": "portfolio_model"
+    },
+    {
       "name": "holdings_detail",
-      "embedded_sha256": "f4813bb62f2333b020ab4bf2373b0ce97c86fd037bf2e414ada0f4f27adcc401",
+      "embedded_sha256": "94a944669971ac73652dc81e7cdaee01fc1731d54834e449832e7545457c4054",
       "query_spec": {
         "fact": "fact_holdings",
         "measures": [
           "fair_value",
           "cost_basis",
-          "mark"
+          "unrealized",
+          "mark",
+          "wtd_spread_bps"
         ],
         "dimensions": [
           "dim_issuer.issuer",
-          "dim_issuer.sector"
+          "dim_issuer.sector",
+          "dim_rating.rating"
         ],
         "filters": {},
         "aggregate": true,
@@ -2188,11 +3402,31 @@
             "desc": false
           },
           {
+            "column": "dim_rating.rating",
+            "desc": false
+          },
+          {
             "column": "cost_basis",
             "desc": false
           },
           {
+            "column": "unrealized",
+            "desc": false
+          },
+          {
+            "column": "spread_x_par",
+            "desc": false
+          },
+          {
+            "column": "par_amount",
+            "desc": false
+          },
+          {
             "column": "mark",
+            "desc": false
+          },
+          {
+            "column": "wtd_spread_bps",
             "desc": false
           }
         ]
@@ -2201,18 +3435,69 @@
     },
     {
       "name": "holdings_total",
-      "embedded_sha256": "3af18797bb05e8612224d922dc49d777d2b949b5d1ce88b7becaa3b3b6240d8a",
+      "embedded_sha256": "d650fda7f1eb66067deec3fb065a12d196c4c2029830c285ac8cf213f8c3d783",
       "query_spec": {
         "fact": "fact_holdings",
         "measures": [
           "fair_value",
           "cost_basis",
-          "mark"
+          "unrealized",
+          "mark",
+          "wtd_spread_bps"
         ],
         "dimensions": [],
         "filters": {},
         "aggregate": true,
         "allow_fanout": false
+      },
+      "model": "portfolio_model"
+    },
+    {
+      "name": "issuer_fv",
+      "embedded_sha256": "8b2297d30533be0e6c91946e5d3ae2c408885de94d06123e8223853c8b4115f3",
+      "query_spec": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fair_value",
+          "mark",
+          "wtd_spread_bps"
+        ],
+        "dimensions": [
+          "dim_issuer.issuer"
+        ],
+        "filters": {},
+        "aggregate": true,
+        "allow_fanout": false,
+        "order_by": [
+          {
+            "column": "fair_value",
+            "desc": true
+          },
+          {
+            "column": "dim_issuer.issuer",
+            "desc": false
+          },
+          {
+            "column": "cost_basis",
+            "desc": false
+          },
+          {
+            "column": "spread_x_par",
+            "desc": false
+          },
+          {
+            "column": "par_amount",
+            "desc": false
+          },
+          {
+            "column": "mark",
+            "desc": false
+          },
+          {
+            "column": "wtd_spread_bps",
+            "desc": false
+          }
+        ]
       },
       "model": "portfolio_model"
     },
@@ -2258,11 +3543,12 @@
     },
     {
       "name": "top_issuers",
-      "embedded_sha256": "cdf9a35822eb9eb7231a60b2f4af327f51d23287e50b282e59adf6a8eaf1d060",
+      "embedded_sha256": "31df2a18e6ef0eb325420280b149e97e7a398d3a0d9548ab74370bc90d9a4524",
       "query_spec": {
         "fact": "fact_holdings",
         "measures": [
           "fair_value",
+          "fv_share",
           "mark"
         ],
         "dimensions": [
@@ -2286,6 +3572,10 @@
           },
           {
             "column": "mark",
+            "desc": false
+          },
+          {
+            "column": "fv_share",
             "desc": false
           }
         ],
@@ -2311,11 +3601,12 @@
     },
     {
       "name": "flows_by_month",
-      "embedded_sha256": "a28c35b043f467823a93898fffa3f1b2ae51d3f9a6f26ffb068912215ebceed6",
+      "embedded_sha256": "745973dfd70e3270086e99bfe28cecfa159d3ba2964fc521f418fa3a23c6604f",
       "query_spec": {
         "fact": "fact_cashflows",
         "measures": [
-          "net_flow"
+          "net_flow",
+          "flow_count"
         ],
         "dimensions": [
           "dim_date.month"
@@ -2330,6 +3621,42 @@
           },
           {
             "column": "net_flow",
+            "desc": false
+          },
+          {
+            "column": "flow_count",
+            "desc": false
+          }
+        ]
+      },
+      "model": "portfolio_model"
+    },
+    {
+      "name": "flows_by_type",
+      "embedded_sha256": "de80fc783765a712d04adcbf9acd9d21db3ddcc62351ffee8e756458fd63ac89",
+      "query_spec": {
+        "fact": "fact_cashflows",
+        "measures": [
+          "net_flow",
+          "flow_count"
+        ],
+        "dimensions": [
+          "dim_flow_type.flow_type"
+        ],
+        "filters": {},
+        "aggregate": true,
+        "allow_fanout": false,
+        "order_by": [
+          {
+            "column": "net_flow",
+            "desc": true
+          },
+          {
+            "column": "dim_flow_type.flow_type",
+            "desc": false
+          },
+          {
+            "column": "flow_count",
             "desc": false
           }
         ]
@@ -2384,6 +3711,72 @@
   "stage": "final",
   "figures": [
     {
+      "id": "kpi-spread-p90",
+      "kind": "value",
+      "binding": "kpis",
+      "cell": "spread_p90"
+    },
+    {
+      "id": "kpi-watched",
+      "kind": "value",
+      "binding": "watched",
+      "cell": "fair_value"
+    },
+    {
+      "id": "kpi-watched-positions",
+      "kind": "value",
+      "binding": "watched",
+      "cell": "positions"
+    },
+    {
+      "id": "kpi-flow-count",
+      "kind": "value",
+      "binding": "flows",
+      "cell": "flow_count"
+    },
+    {
+      "id": "kpi-net-flow-view",
+      "kind": "value",
+      "binding": "flows",
+      "cell": "net_flow"
+    },
+    {
+      "id": "kpi-fv",
+      "kind": "value",
+      "binding": "kpis",
+      "cell": "fair_value"
+    },
+    {
+      "id": "fig-delta-kpis-unrealized",
+      "kind": "value",
+      "binding": "kpis",
+      "cell": "unrealized"
+    },
+    {
+      "id": "kpi-mark",
+      "kind": "value",
+      "binding": "kpis",
+      "cell": "mark"
+    },
+    {
+      "id": "kpi-spread",
+      "kind": "value",
+      "binding": "kpis",
+      "cell": "wtd_spread_bps"
+    },
+    {
+      "id": "kpi-positions",
+      "kind": "value",
+      "binding": "kpis",
+      "cell": "positions"
+    },
+    {
+      "id": "kpi-net-flow",
+      "kind": "value",
+      "binding": "flows",
+      "cell": "net_flow"
+    },
+    {
       "id": "val-top-sector",
       "kind": "value",
       "binding": "top_sector",
@@ -2402,34 +3795,22 @@
       "cell": "fair_value"
     },
     {
-      "id": "kpi-fv",
-      "kind": "value",
-      "binding": "kpis",
-      "cell": "fair_value"
-    },
-    {
-      "id": "kpi-gain",
-      "kind": "value",
-      "binding": "gain",
-      "cell": "unrealized"
-    },
-    {
-      "id": "kpi-pos",
-      "kind": "value",
-      "binding": "kpis",
-      "cell": "positions"
-    },
-    {
-      "id": "kpi-mark",
+      "id": "val-mark-inline",
       "kind": "value",
       "binding": "kpis",
       "cell": "mark"
     },
     {
-      "id": "kpi-est",
+      "id": "val-top-issuer",
       "kind": "value",
-      "unverified": true,
-      "note": "analyst estimate"
+      "binding": "top_issuer",
+      "cell": "dim_issuer.issuer"
+    },
+    {
+      "id": "val-top-issuer-share",
+      "kind": "value",
+      "binding": "top_issuer",
+      "cell": "fv_share"
     },
     {
       "id": "chart-sector",
@@ -2437,19 +3818,9 @@
       "binding": "by_sector"
     },
     {
-      "id": "fig-chart_fund",
+      "id": "chart-fund",
       "kind": "chart",
       "binding": "by_fund"
-    },
-    {
-      "id": "tbl-top",
-      "kind": "table",
-      "binding": "top_issuers"
-    },
-    {
-      "id": "chart-conc",
-      "kind": "chart",
-      "binding": "concentration"
     },
     {
       "id": "chart-fund-sector",
@@ -2457,19 +3828,24 @@
       "binding": "fund_sector"
     },
     {
-      "id": "chart-top-issuers",
+      "id": "chart-sector-unrealized",
       "kind": "chart",
-      "binding": "top_issuers"
+      "binding": "by_sector"
     },
     {
       "id": "chart-size-mark",
       "kind": "chart",
-      "binding": "top_issuers"
+      "binding": "issuer_fv"
     },
     {
-      "id": "chart-rating",
+      "id": "chart-spread-mark",
       "kind": "chart",
-      "binding": "by_rating"
+      "binding": "issuer_fv"
+    },
+    {
+      "id": "ech-issuer-treemap",
+      "kind": "chart",
+      "binding": "issuer_fv"
     },
     {
       "id": "chart-issuer-curve",
@@ -2477,44 +3853,76 @@
       "binding": "issuer_curve"
     },
     {
-      "id": "fig-treemap",
-      "kind": "custom",
-      "binding": "holdings_detail"
+      "id": "chart-conc",
+      "kind": "chart",
+      "binding": "concentration"
+    },
+    {
+      "id": "chart-rating",
+      "kind": "chart",
+      "binding": "by_rating"
+    },
+    {
+      "id": "chart-rating-watch",
+      "kind": "chart",
+      "binding": "rating_watch"
+    },
+    {
+      "id": "ech-flows-month",
+      "kind": "chart",
+      "binding": "flows_by_month"
+    },
+    {
+      "id": "chart-flows-count",
+      "kind": "chart",
+      "binding": "flows_by_month"
+    },
+    {
+      "id": "chart-flow-type",
+      "kind": "chart",
+      "binding": "flows_by_type"
     },
     {
       "id": "tbl-detail",
       "kind": "table",
-      "binding": "holdings_detail",
-      "totals": "holdings_total"
+      "binding": "holdings_detail"
     },
     {
-      "id": "kpi-net-flow",
-      "kind": "value",
-      "binding": "flows",
-      "cell": "net_flow"
+      "id": "tbl-top",
+      "kind": "table",
+      "binding": "top_issuers"
     },
     {
-      "id": "kpi-flow-count",
-      "kind": "value",
-      "binding": "flows",
-      "cell": "flow_count"
-    },
-    {
-      "id": "chart-flows-month",
-      "kind": "chart",
-      "binding": "flows_by_month"
+      "id": "tbl-rating",
+      "kind": "table",
+      "binding": "by_rating"
     },
     {
       "id": "tbl-flows",
       "kind": "table",
       "binding": "flows_by_fund"
+    },
+    {
+      "id": "spark-flow-count",
+      "kind": "chart",
+      "binding": "flows_by_month"
+    },
+    {
+      "id": "spark-net-flow-view",
+      "kind": "chart",
+      "binding": "flows_by_month"
+    },
+    {
+      "id": "spark-net-flow",
+      "kind": "chart",
+      "binding": "flows_by_month"
     }
   ],
   "transform_contracts": {
     "dim_date": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-10-24T02:22:36.336570+00:00",
+      "checked_at": "2026-10-30T16:47:58.347820+00:00",
       "checks": 2,
       "fingerprint": "df70370a6f29f92523d4af1c45e848c972ffe778ce37ac65e550b7f0007f39b1",
       "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
@@ -2526,14 +3934,20 @@
           "fallback": "inputs/issuer_ratings.csv",
           "rows": 12,
           "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
-          "loaded_at": "2026-10-24T02:22:35.981989+00:00"
+          "loaded_at": "2026-10-30T16:47:57.720974+00:00",
+          "method": "pandas"
         }
-      }
+      },
+      "writer": "holdings_transform",
+      "read": [
+        "crm.issuer_ratings \u2014 snapshot inputs/issuer_ratings.csv",
+        "inputs/holdings.csv"
+      ]
     },
     "dim_flow_type": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-10-24T02:22:36.336570+00:00",
+      "checked_at": "2026-10-30T16:47:58.347820+00:00",
       "checks": 2,
       "fingerprint": "ebcc07dbb0a38cbd69da5ac93bf3aef46c8d1a43e67d0cb216d7370349018576",
       "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
@@ -2545,14 +3959,20 @@
           "fallback": "inputs/issuer_ratings.csv",
           "rows": 12,
           "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
-          "loaded_at": "2026-10-24T02:22:35.981989+00:00"
+          "loaded_at": "2026-10-30T16:47:57.720974+00:00",
+          "method": "pandas"
         }
-      }
+      },
+      "writer": "holdings_transform",
+      "read": [
+        "crm.issuer_ratings \u2014 snapshot inputs/issuer_ratings.csv",
+        "inputs/holdings.csv"
+      ]
     },
     "dim_fund": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-10-24T02:22:36.336570+00:00",
+      "checked_at": "2026-10-30T16:47:58.347820+00:00",
       "checks": 2,
       "fingerprint": "544dcca864e67ca4dd7f74fb0692f2cfe8728b387ca5aa8a3734889048ed40f4",
       "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
@@ -2564,14 +3984,20 @@
           "fallback": "inputs/issuer_ratings.csv",
           "rows": 12,
           "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
-          "loaded_at": "2026-10-24T02:22:35.981989+00:00"
+          "loaded_at": "2026-10-30T16:47:57.720974+00:00",
+          "method": "pandas"
         }
-      }
+      },
+      "writer": "holdings_transform",
+      "read": [
+        "crm.issuer_ratings \u2014 snapshot inputs/issuer_ratings.csv",
+        "inputs/holdings.csv"
+      ]
     },
     "dim_issuer": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-10-24T02:22:36.336570+00:00",
+      "checked_at": "2026-10-30T16:47:58.347820+00:00",
       "checks": 3,
       "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
       "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
@@ -2583,14 +4009,20 @@
           "fallback": "inputs/issuer_ratings.csv",
           "rows": 12,
           "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
-          "loaded_at": "2026-10-24T02:22:35.981989+00:00"
+          "loaded_at": "2026-10-30T16:47:57.720974+00:00",
+          "method": "pandas"
         }
-      }
+      },
+      "writer": "holdings_transform",
+      "read": [
+        "crm.issuer_ratings \u2014 snapshot inputs/issuer_ratings.csv",
+        "inputs/holdings.csv"
+      ]
     },
     "dim_rating": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-10-24T02:22:36.336570+00:00",
+      "checked_at": "2026-10-30T16:47:58.347820+00:00",
       "checks": 4,
       "fingerprint": "ce56858e94bceb16f7e0e9096e3863338ca9a50e9043b958f986d67b5f30dad9",
       "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
@@ -2602,14 +4034,20 @@
           "fallback": "inputs/issuer_ratings.csv",
           "rows": 12,
           "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
-          "loaded_at": "2026-10-24T02:22:35.981989+00:00"
+          "loaded_at": "2026-10-30T16:47:57.720974+00:00",
+          "method": "pandas"
         }
-      }
+      },
+      "writer": "holdings_transform",
+      "read": [
+        "crm.issuer_ratings \u2014 snapshot inputs/issuer_ratings.csv",
+        "inputs/holdings.csv"
+      ]
     },
     "fact_cashflows": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-10-24T02:22:36.336570+00:00",
+      "checked_at": "2026-10-30T16:47:58.347820+00:00",
       "checks": 6,
       "fingerprint": "c313d4f72ec1f45e6b45c50e553f64c4daf2d719cc5a216dca7111fb18567906",
       "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
@@ -2621,14 +4059,20 @@
           "fallback": "inputs/issuer_ratings.csv",
           "rows": 12,
           "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
-          "loaded_at": "2026-10-24T02:22:35.981989+00:00"
+          "loaded_at": "2026-10-30T16:47:57.720974+00:00",
+          "method": "pandas"
         }
-      }
+      },
+      "writer": "holdings_transform",
+      "read": [
+        "crm.issuer_ratings \u2014 snapshot inputs/issuer_ratings.csv",
+        "inputs/holdings.csv"
+      ]
     },
     "fact_holdings": {
       "status": "satisfied",
       "transform": "holdings",
-      "checked_at": "2026-10-24T02:22:36.336570+00:00",
+      "checked_at": "2026-10-30T16:47:58.347820+00:00",
       "checks": 5,
       "fingerprint": "9862ad1f4acf91db1d7304ab9d81c90ee5f5ae109b8fedc0c364574658080faf",
       "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
@@ -2640,9 +4084,15 @@
           "fallback": "inputs/issuer_ratings.csv",
           "rows": 12,
           "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
-          "loaded_at": "2026-10-24T02:22:35.981989+00:00"
+          "loaded_at": "2026-10-30T16:47:57.720974+00:00",
+          "method": "pandas"
         }
-      }
+      },
+      "writer": "holdings_transform",
+      "read": [
+        "crm.issuer_ratings \u2014 snapshot inputs/issuer_ratings.csv",
+        "inputs/holdings.csv"
+      ]
     }
   },
   "methodology": {
@@ -2657,24 +4107,32 @@
     },
     "check_notes": [
       {
-        "transform": "holdings",
+        "transform": "holdings_transform",
         "check": "rows",
         "table": "fact_holdings",
         "note": "a Schedule of Investments under 10 positions means the raw pull is truncated, not that the book shrank"
       },
       {
-        "transform": "holdings",
+        "transform": "holdings_transform",
         "check": "values",
         "table": "dim_rating",
         "note": "the CRM's ratings on the agency scale; an issuer it does not cover is Unrated, never dropped"
+      },
+      {
+        "transform": "holdings_transform",
+        "check": "rows",
+        "table": "fact_holdings_by_sector",
+        "note": "a sink view over fact_holdings and dim_issuer, checked as a table is; every held position has a sector, so it has at least one row"
       }
     ],
     "measure_notes": {
       "fair_value": "Total fair value",
-      "positions": "Position count",
-      "mark": "Fair value / cost",
-      "fv_share": "Fair value as % of total",
       "unrealized": "Unrealized gain / loss",
+      "mark": "Fair value / cost",
+      "positions": "Position count",
+      "wtd_spread_bps": "Par-weighted average spread (bps)",
+      "spread_p90": "90th-percentile spread (bps) \u2014 the wide tail",
+      "fv_share": "Fair value as % of total",
       "cost_basis": "Total cost basis",
       "fv_rank": "Rank by fair value (1 = largest)",
       "fv_cum_share": "Cumulative % of total (largest first)",
@@ -2767,7 +4225,11 @@
             "description": "Total cost basis",
             "format": "currency0",
             "kind": "simple",
-            "name": "cost_basis"
+            "name": "cost_basis",
+            "synonyms": [
+              "cost",
+              "book cost"
+            ]
           },
           {
             "agg": "sum",
@@ -2775,7 +4237,12 @@
             "description": "Total fair value",
             "format": "currency0",
             "kind": "simple",
-            "name": "fair_value"
+            "name": "fair_value",
+            "synonyms": [
+              "market value",
+              "FV",
+              "mark-to-market value"
+            ]
           },
           {
             "agg": "count",
@@ -2801,8 +4268,13 @@
             "description": "Fair value as % of total",
             "format": "percent",
             "kind": "share",
+            "label": "Share of fair value",
             "name": "fv_share",
-            "share": "fair_value"
+            "share": "fair_value",
+            "synonyms": [
+              "concentration",
+              "share of the book"
+            ]
           },
           {
             "description": "Fair value / cost",
@@ -2812,6 +4284,10 @@
             "ratio": [
               "fair_value",
               "cost_basis"
+            ],
+            "synonyms": [
+              "price",
+              "mark to cost"
             ]
           },
           {
@@ -2820,14 +4296,29 @@
             "description": "Net cash flow (received less lent out)",
             "format": "currency0",
             "kind": "simple",
-            "name": "net_flow"
+            "name": "net_flow",
+            "synonyms": [
+              "net cash flow",
+              "cash flow"
+            ]
           },
           {
             "agg": "count",
             "column": "holding_id",
             "description": "Position count",
             "kind": "simple",
-            "name": "positions"
+            "name": "positions",
+            "synonyms": [
+              "holdings",
+              "loans"
+            ]
+          },
+          {
+            "agg": "p90",
+            "column": "spread_bps",
+            "description": "90th-percentile spread (bps) \u2014 the wide tail",
+            "kind": "simple",
+            "name": "spread_p90"
           },
           {
             "agg": "sum",
@@ -2835,7 +4326,26 @@
             "expr": "fair_value - cost",
             "format": "currency0",
             "kind": "expression",
-            "name": "unrealized"
+            "name": "unrealized",
+            "synonyms": [
+              "unrealized gain",
+              "unrealized P&L"
+            ]
+          },
+          {
+            "description": "Par-weighted average spread (bps)",
+            "format": "decimal",
+            "kind": "ratio",
+            "name": "wtd_spread_bps",
+            "ratio": [
+              "spread_x_par",
+              "par_amount"
+            ],
+            "synonyms": [
+              "par-weighted spread",
+              "weighted spread",
+              "spread"
+            ]
           }
         ],
         "tables": [
@@ -2876,35 +4386,9 @@
           }
         ]
       },
-      "sha256": "d4e300cf61a632d51c95161fe2cc8125b7deeb19d4513f8ea60575166131fd45"
+      "sha256": "727ddd8b21ab3a426503b28c815c200ff721108584c9fffde81759c304fed9fc"
     }
   },
-  "scenarios": [
-    {
-      "name": "markdown",
-      "inputs": [
-        "fv",
-        "cut"
-      ],
-      "calcs": [
-        {
-          "id": "calc-markdown",
-          "formula": "fv * (1 - cut / 100)",
-          "format": "currency0"
-        }
-      ],
-      "presets": [
-        {
-          "binding": "by_sector",
-          "key": "dim_issuer.sector",
-          "fill": {
-            "fv": "fair_value"
-          }
-        }
-      ],
-      "verifiable": false
-    }
-  ],
   "slice": {
     "fact_holdings": {
       "block": "tracebi-slice-fact_holdings",
@@ -2912,15 +4396,20 @@
       "fact": "fact_holdings",
       "grain": [
         "dim_issuer.sector",
+        "dim_issuer.issuer",
         "dim_fund.fund",
         "dim_rating.rating",
-        "dim_issuer.issuer"
+        "dim_rating.watch"
       ],
       "base_grain": true,
       "reason": "measure 'unrealized' is a row expression",
       "columns": [
         {
           "name": "dim_issuer.sector",
+          "type": "string"
+        },
+        {
+          "name": "dim_issuer.issuer",
           "type": "string"
         },
         {
@@ -2932,7 +4421,7 @@
           "type": "string"
         },
         {
-          "name": "dim_issuer.issuer",
+          "name": "dim_rating.watch",
           "type": "string"
         },
         {
@@ -2940,27 +4429,38 @@
           "type": "number"
         },
         {
+          "name": "cost",
+          "type": "number"
+        },
+        {
           "name": "holding_id",
           "type": "number"
         },
         {
-          "name": "cost",
+          "name": "spread_bps",
+          "type": "number"
+        },
+        {
+          "name": "par",
           "type": "number"
         }
       ],
       "rows": 25,
-      "payload_sha256": "af9b8aa6b80e063fe6ed21a3b1e964f5687a1710b434036528d607f1d5ff1db1",
+      "payload_sha256": "961a2aa53258d398f1428ab921640e1b4367803312a6d73115c7529f386b6ecb",
       "embed": "required",
       "bindings": [
         "kpis",
-        "by_sector",
         "top_sector",
-        "gain",
+        "top_issuer",
+        "by_sector",
         "by_fund",
-        "by_rating",
         "fund_sector",
+        "by_rating",
+        "rating_watch",
+        "watched",
         "holdings_detail",
         "holdings_total",
+        "issuer_fv",
         "issuer_curve",
         "top_issuers"
       ]
@@ -2971,8 +4471,8 @@
       "fact": "fact_cashflows",
       "grain": [
         "dim_date.month",
-        "dim_fund.fund",
         "dim_flow_type.flow_type",
+        "dim_fund.fund",
         "dim_issuer.sector"
       ],
       "base_grain": false,
@@ -2983,11 +4483,11 @@
           "type": "string"
         },
         {
-          "name": "dim_fund.fund",
+          "name": "dim_flow_type.flow_type",
           "type": "string"
         },
         {
-          "name": "dim_flow_type.flow_type",
+          "name": "dim_fund.fund",
           "type": "string"
         },
         {
@@ -3004,11 +4504,12 @@
         }
       ],
       "rows": 56,
-      "payload_sha256": "88e6f0601e296d6cce6e56e568c225a17d42f573c0545412297b5ff791528161",
+      "payload_sha256": "b4a5b5ae7a4de9ac07f063efbb8d016be1f83e1da1e02fe2e761ae98548f2829",
       "embed": "required",
       "bindings": [
         "flows",
         "flows_by_month",
+        "flows_by_type",
         "flows_by_fund"
       ]
     }
@@ -3020,12 +4521,15 @@
       "fact": "fact_holdings",
       "slice_columns": [
         "dim_issuer.sector",
+        "dim_issuer.issuer",
         "dim_fund.fund",
         "dim_rating.rating",
-        "dim_issuer.issuer",
+        "dim_rating.watch",
         "fair_value",
+        "cost",
         "holding_id",
-        "cost"
+        "spread_bps",
+        "par"
       ],
       "filters": null,
       "group_by": [],
@@ -3038,10 +4542,18 @@
           }
         },
         {
-          "name": "positions",
-          "func": "count",
+          "name": "unrealized",
+          "func": "sum",
           "source": {
-            "col": "holding_id"
+            "op": "-",
+            "args": [
+              {
+                "col": "fair_value"
+              },
+              {
+                "col": "cost"
+              }
+            ]
           }
         },
         {
@@ -3049,6 +4561,43 @@
           "func": "sum",
           "source": {
             "col": "cost"
+          }
+        },
+        {
+          "name": "positions",
+          "func": "count",
+          "source": {
+            "col": "holding_id"
+          }
+        },
+        {
+          "name": "spread_x_par",
+          "func": "sum",
+          "source": {
+            "op": "*",
+            "args": [
+              {
+                "col": "spread_bps"
+              },
+              {
+                "col": "par"
+              }
+            ]
+          }
+        },
+        {
+          "name": "par_amount",
+          "func": "sum",
+          "source": {
+            "col": "par"
+          }
+        },
+        {
+          "name": "spread_p90",
+          "func": "quantile",
+          "q": 0.9,
+          "source": {
+            "col": "spread_bps"
           }
         }
       ],
@@ -3058,6 +4607,11 @@
           "name": "mark",
           "num": "fair_value",
           "den": "cost_basis"
+        },
+        {
+          "name": "wtd_spread_bps",
+          "num": "spread_x_par",
+          "den": "par_amount"
         }
       ],
       "shares": [],
@@ -3069,58 +4623,14 @@
       "limit": null,
       "columns": [
         "fair_value",
-        "positions",
+        "unrealized",
         "cost_basis",
-        "mark"
-      ]
-    },
-    "by_sector": {
-      "version": 1,
-      "model": "portfolio_model",
-      "fact": "fact_holdings",
-      "slice_columns": [
-        "dim_issuer.sector",
-        "dim_fund.fund",
-        "dim_rating.rating",
-        "dim_issuer.issuer",
-        "fair_value",
-        "holding_id",
-        "cost"
-      ],
-      "filters": null,
-      "group_by": [
-        "dim_issuer.sector"
-      ],
-      "aggregates": [
-        {
-          "name": "fair_value",
-          "func": "sum",
-          "source": {
-            "col": "fair_value"
-          }
-        }
-      ],
-      "means": [],
-      "ratios": [],
-      "shares": [],
-      "combines": [],
-      "ranks": [],
-      "runnings": [],
-      "having": [],
-      "order_by": [
-        {
-          "column": "fair_value",
-          "desc": true
-        },
-        {
-          "column": "dim_issuer.sector",
-          "desc": false
-        }
-      ],
-      "limit": null,
-      "columns": [
-        "dim_issuer.sector",
-        "fair_value"
+        "positions",
+        "spread_x_par",
+        "par_amount",
+        "spread_p90",
+        "mark",
+        "wtd_spread_bps"
       ]
     },
     "top_sector": {
@@ -3129,12 +4639,15 @@
       "fact": "fact_holdings",
       "slice_columns": [
         "dim_issuer.sector",
+        "dim_issuer.issuer",
         "dim_fund.fund",
         "dim_rating.rating",
-        "dim_issuer.issuer",
+        "dim_rating.watch",
         "fair_value",
+        "cost",
         "holding_id",
-        "cost"
+        "spread_bps",
+        "par"
       ],
       "filters": null,
       "group_by": [
@@ -3178,22 +4691,92 @@
         "fv_share"
       ]
     },
-    "gain": {
+    "top_issuer": {
       "version": 1,
       "model": "portfolio_model",
       "fact": "fact_holdings",
       "slice_columns": [
         "dim_issuer.sector",
+        "dim_issuer.issuer",
         "dim_fund.fund",
         "dim_rating.rating",
-        "dim_issuer.issuer",
+        "dim_rating.watch",
         "fair_value",
+        "cost",
         "holding_id",
-        "cost"
+        "spread_bps",
+        "par"
       ],
       "filters": null,
-      "group_by": [],
+      "group_by": [
+        "dim_issuer.issuer"
+      ],
       "aggregates": [
+        {
+          "name": "fair_value",
+          "func": "sum",
+          "source": {
+            "col": "fair_value"
+          }
+        }
+      ],
+      "means": [],
+      "ratios": [],
+      "shares": [
+        {
+          "name": "fv_share",
+          "base": "fair_value"
+        }
+      ],
+      "combines": [],
+      "ranks": [],
+      "runnings": [],
+      "having": [],
+      "order_by": [
+        {
+          "column": "fair_value",
+          "desc": true
+        },
+        {
+          "column": "dim_issuer.issuer",
+          "desc": false
+        }
+      ],
+      "limit": 1,
+      "columns": [
+        "dim_issuer.issuer",
+        "fair_value",
+        "fv_share"
+      ]
+    },
+    "by_sector": {
+      "version": 1,
+      "model": "portfolio_model",
+      "fact": "fact_holdings",
+      "slice_columns": [
+        "dim_issuer.sector",
+        "dim_issuer.issuer",
+        "dim_fund.fund",
+        "dim_rating.rating",
+        "dim_rating.watch",
+        "fair_value",
+        "cost",
+        "holding_id",
+        "spread_bps",
+        "par"
+      ],
+      "filters": null,
+      "group_by": [
+        "dim_issuer.sector"
+      ],
+      "aggregates": [
+        {
+          "name": "fair_value",
+          "func": "sum",
+          "source": {
+            "col": "fair_value"
+          }
+        },
         {
           "name": "unrealized",
           "func": "sum",
@@ -3208,19 +4791,53 @@
               }
             ]
           }
+        },
+        {
+          "name": "cost_basis",
+          "func": "sum",
+          "source": {
+            "col": "cost"
+          }
+        },
+        {
+          "name": "positions",
+          "func": "count",
+          "source": {
+            "col": "holding_id"
+          }
         }
       ],
       "means": [],
-      "ratios": [],
+      "ratios": [
+        {
+          "name": "mark",
+          "num": "fair_value",
+          "den": "cost_basis"
+        }
+      ],
       "shares": [],
       "combines": [],
       "ranks": [],
       "runnings": [],
       "having": [],
-      "order_by": [],
+      "order_by": [
+        {
+          "column": "fair_value",
+          "desc": true
+        },
+        {
+          "column": "dim_issuer.sector",
+          "desc": false
+        }
+      ],
       "limit": null,
       "columns": [
-        "unrealized"
+        "dim_issuer.sector",
+        "fair_value",
+        "unrealized",
+        "cost_basis",
+        "positions",
+        "mark"
       ]
     },
     "by_fund": {
@@ -3229,12 +4846,15 @@
       "fact": "fact_holdings",
       "slice_columns": [
         "dim_issuer.sector",
+        "dim_issuer.issuer",
         "dim_fund.fund",
         "dim_rating.rating",
-        "dim_issuer.issuer",
+        "dim_rating.watch",
         "fair_value",
+        "cost",
         "holding_id",
-        "cost"
+        "spread_bps",
+        "par"
       ],
       "filters": null,
       "group_by": [
@@ -3247,10 +4867,45 @@
           "source": {
             "col": "fair_value"
           }
+        },
+        {
+          "name": "unrealized",
+          "func": "sum",
+          "source": {
+            "op": "-",
+            "args": [
+              {
+                "col": "fair_value"
+              },
+              {
+                "col": "cost"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cost_basis",
+          "func": "sum",
+          "source": {
+            "col": "cost"
+          }
+        },
+        {
+          "name": "positions",
+          "func": "count",
+          "source": {
+            "col": "holding_id"
+          }
         }
       ],
       "means": [],
-      "ratios": [],
+      "ratios": [
+        {
+          "name": "mark",
+          "num": "fair_value",
+          "den": "cost_basis"
+        }
+      ],
       "shares": [],
       "combines": [],
       "ranks": [],
@@ -3269,6 +4924,64 @@
       "limit": null,
       "columns": [
         "dim_fund.fund",
+        "fair_value",
+        "unrealized",
+        "cost_basis",
+        "positions",
+        "mark"
+      ]
+    },
+    "fund_sector": {
+      "version": 1,
+      "model": "portfolio_model",
+      "fact": "fact_holdings",
+      "slice_columns": [
+        "dim_issuer.sector",
+        "dim_issuer.issuer",
+        "dim_fund.fund",
+        "dim_rating.rating",
+        "dim_rating.watch",
+        "fair_value",
+        "cost",
+        "holding_id",
+        "spread_bps",
+        "par"
+      ],
+      "filters": null,
+      "group_by": [
+        "dim_fund.fund",
+        "dim_issuer.sector"
+      ],
+      "aggregates": [
+        {
+          "name": "fair_value",
+          "func": "sum",
+          "source": {
+            "col": "fair_value"
+          }
+        }
+      ],
+      "means": [],
+      "ratios": [],
+      "shares": [],
+      "combines": [],
+      "ranks": [],
+      "runnings": [],
+      "having": [],
+      "order_by": [
+        {
+          "column": "dim_fund.fund",
+          "desc": false
+        },
+        {
+          "column": "dim_issuer.sector",
+          "desc": false
+        }
+      ],
+      "limit": null,
+      "columns": [
+        "dim_fund.fund",
+        "dim_issuer.sector",
         "fair_value"
       ]
     },
@@ -3278,12 +4991,15 @@
       "fact": "fact_holdings",
       "slice_columns": [
         "dim_issuer.sector",
+        "dim_issuer.issuer",
         "dim_fund.fund",
         "dim_rating.rating",
-        "dim_issuer.issuer",
+        "dim_rating.watch",
         "fair_value",
+        "cost",
         "holding_id",
-        "cost"
+        "spread_bps",
+        "par"
       ],
       "filters": null,
       "group_by": [
@@ -3296,20 +5012,63 @@
           "source": {
             "col": "fair_value"
           }
+        },
+        {
+          "name": "positions",
+          "func": "count",
+          "source": {
+            "col": "holding_id"
+          }
+        },
+        {
+          "name": "spread_x_par",
+          "func": "sum",
+          "source": {
+            "op": "*",
+            "args": [
+              {
+                "col": "spread_bps"
+              },
+              {
+                "col": "par"
+              }
+            ]
+          }
+        },
+        {
+          "name": "par_amount",
+          "func": "sum",
+          "source": {
+            "col": "par"
+          }
+        },
+        {
+          "name": "cost_basis",
+          "func": "sum",
+          "source": {
+            "col": "cost"
+          }
         }
       ],
       "means": [],
-      "ratios": [],
+      "ratios": [
+        {
+          "name": "wtd_spread_bps",
+          "num": "spread_x_par",
+          "den": "par_amount"
+        },
+        {
+          "name": "mark",
+          "num": "fair_value",
+          "den": "cost_basis"
+        }
+      ],
       "shares": [],
       "combines": [],
       "ranks": [],
       "runnings": [],
       "having": [],
       "order_by": [
-        {
-          "column": "fair_value",
-          "desc": true
-        },
         {
           "column": "dim_rating.rating",
           "desc": false
@@ -3318,26 +5077,35 @@
       "limit": null,
       "columns": [
         "dim_rating.rating",
-        "fair_value"
+        "fair_value",
+        "positions",
+        "spread_x_par",
+        "par_amount",
+        "cost_basis",
+        "wtd_spread_bps",
+        "mark"
       ]
     },
-    "fund_sector": {
+    "rating_watch": {
       "version": 1,
       "model": "portfolio_model",
       "fact": "fact_holdings",
       "slice_columns": [
         "dim_issuer.sector",
+        "dim_issuer.issuer",
         "dim_fund.fund",
         "dim_rating.rating",
-        "dim_issuer.issuer",
+        "dim_rating.watch",
         "fair_value",
+        "cost",
         "holding_id",
-        "cost"
+        "spread_bps",
+        "par"
       ],
       "filters": null,
       "group_by": [
-        "dim_fund.fund",
-        "dim_issuer.sector"
+        "dim_rating.rating",
+        "dim_rating.watch"
       ],
       "aggregates": [
         {
@@ -3357,19 +5125,71 @@
       "having": [],
       "order_by": [
         {
-          "column": "dim_issuer.sector",
+          "column": "dim_rating.rating",
           "desc": false
         },
         {
-          "column": "dim_fund.fund",
+          "column": "dim_rating.watch",
           "desc": false
         }
       ],
       "limit": null,
       "columns": [
-        "dim_fund.fund",
-        "dim_issuer.sector",
+        "dim_rating.rating",
+        "dim_rating.watch",
         "fair_value"
+      ]
+    },
+    "watched": {
+      "version": 1,
+      "model": "portfolio_model",
+      "fact": "fact_holdings",
+      "slice_columns": [
+        "dim_issuer.sector",
+        "dim_issuer.issuer",
+        "dim_fund.fund",
+        "dim_rating.rating",
+        "dim_rating.watch",
+        "fair_value",
+        "cost",
+        "holding_id",
+        "spread_bps",
+        "par"
+      ],
+      "filters": {
+        "column": "dim_rating.watch",
+        "op": "eq",
+        "value": "yes"
+      },
+      "group_by": [],
+      "aggregates": [
+        {
+          "name": "fair_value",
+          "func": "sum",
+          "source": {
+            "col": "fair_value"
+          }
+        },
+        {
+          "name": "positions",
+          "func": "count",
+          "source": {
+            "col": "holding_id"
+          }
+        }
+      ],
+      "means": [],
+      "ratios": [],
+      "shares": [],
+      "combines": [],
+      "ranks": [],
+      "runnings": [],
+      "having": [],
+      "order_by": [],
+      "limit": null,
+      "columns": [
+        "fair_value",
+        "positions"
       ]
     },
     "holdings_detail": {
@@ -3378,17 +5198,21 @@
       "fact": "fact_holdings",
       "slice_columns": [
         "dim_issuer.sector",
+        "dim_issuer.issuer",
         "dim_fund.fund",
         "dim_rating.rating",
-        "dim_issuer.issuer",
+        "dim_rating.watch",
         "fair_value",
+        "cost",
         "holding_id",
-        "cost"
+        "spread_bps",
+        "par"
       ],
       "filters": null,
       "group_by": [
         "dim_issuer.issuer",
-        "dim_issuer.sector"
+        "dim_issuer.sector",
+        "dim_rating.rating"
       ],
       "aggregates": [
         {
@@ -3404,6 +5228,43 @@
           "source": {
             "col": "cost"
           }
+        },
+        {
+          "name": "unrealized",
+          "func": "sum",
+          "source": {
+            "op": "-",
+            "args": [
+              {
+                "col": "fair_value"
+              },
+              {
+                "col": "cost"
+              }
+            ]
+          }
+        },
+        {
+          "name": "spread_x_par",
+          "func": "sum",
+          "source": {
+            "op": "*",
+            "args": [
+              {
+                "col": "spread_bps"
+              },
+              {
+                "col": "par"
+              }
+            ]
+          }
+        },
+        {
+          "name": "par_amount",
+          "func": "sum",
+          "source": {
+            "col": "par"
+          }
         }
       ],
       "means": [],
@@ -3412,6 +5273,11 @@
           "name": "mark",
           "num": "fair_value",
           "den": "cost_basis"
+        },
+        {
+          "name": "wtd_spread_bps",
+          "num": "spread_x_par",
+          "den": "par_amount"
         }
       ],
       "shares": [],
@@ -3431,15 +5297,24 @@
         {
           "column": "dim_issuer.sector",
           "desc": false
+        },
+        {
+          "column": "dim_rating.rating",
+          "desc": false
         }
       ],
       "limit": null,
       "columns": [
         "dim_issuer.issuer",
         "dim_issuer.sector",
+        "dim_rating.rating",
         "fair_value",
         "cost_basis",
-        "mark"
+        "unrealized",
+        "spread_x_par",
+        "par_amount",
+        "mark",
+        "wtd_spread_bps"
       ]
     },
     "holdings_total": {
@@ -3448,12 +5323,15 @@
       "fact": "fact_holdings",
       "slice_columns": [
         "dim_issuer.sector",
+        "dim_issuer.issuer",
         "dim_fund.fund",
         "dim_rating.rating",
-        "dim_issuer.issuer",
+        "dim_rating.watch",
         "fair_value",
+        "cost",
         "holding_id",
-        "cost"
+        "spread_bps",
+        "par"
       ],
       "filters": null,
       "group_by": [],
@@ -3471,6 +5349,43 @@
           "source": {
             "col": "cost"
           }
+        },
+        {
+          "name": "unrealized",
+          "func": "sum",
+          "source": {
+            "op": "-",
+            "args": [
+              {
+                "col": "fair_value"
+              },
+              {
+                "col": "cost"
+              }
+            ]
+          }
+        },
+        {
+          "name": "spread_x_par",
+          "func": "sum",
+          "source": {
+            "op": "*",
+            "args": [
+              {
+                "col": "spread_bps"
+              },
+              {
+                "col": "par"
+              }
+            ]
+          }
+        },
+        {
+          "name": "par_amount",
+          "func": "sum",
+          "source": {
+            "col": "par"
+          }
         }
       ],
       "means": [],
@@ -3479,6 +5394,11 @@
           "name": "mark",
           "num": "fair_value",
           "den": "cost_basis"
+        },
+        {
+          "name": "wtd_spread_bps",
+          "num": "spread_x_par",
+          "den": "par_amount"
         }
       ],
       "shares": [],
@@ -3491,7 +5411,108 @@
       "columns": [
         "fair_value",
         "cost_basis",
-        "mark"
+        "unrealized",
+        "spread_x_par",
+        "par_amount",
+        "mark",
+        "wtd_spread_bps"
+      ]
+    },
+    "issuer_fv": {
+      "version": 1,
+      "model": "portfolio_model",
+      "fact": "fact_holdings",
+      "slice_columns": [
+        "dim_issuer.sector",
+        "dim_issuer.issuer",
+        "dim_fund.fund",
+        "dim_rating.rating",
+        "dim_rating.watch",
+        "fair_value",
+        "cost",
+        "holding_id",
+        "spread_bps",
+        "par"
+      ],
+      "filters": null,
+      "group_by": [
+        "dim_issuer.issuer"
+      ],
+      "aggregates": [
+        {
+          "name": "fair_value",
+          "func": "sum",
+          "source": {
+            "col": "fair_value"
+          }
+        },
+        {
+          "name": "cost_basis",
+          "func": "sum",
+          "source": {
+            "col": "cost"
+          }
+        },
+        {
+          "name": "spread_x_par",
+          "func": "sum",
+          "source": {
+            "op": "*",
+            "args": [
+              {
+                "col": "spread_bps"
+              },
+              {
+                "col": "par"
+              }
+            ]
+          }
+        },
+        {
+          "name": "par_amount",
+          "func": "sum",
+          "source": {
+            "col": "par"
+          }
+        }
+      ],
+      "means": [],
+      "ratios": [
+        {
+          "name": "mark",
+          "num": "fair_value",
+          "den": "cost_basis"
+        },
+        {
+          "name": "wtd_spread_bps",
+          "num": "spread_x_par",
+          "den": "par_amount"
+        }
+      ],
+      "shares": [],
+      "combines": [],
+      "ranks": [],
+      "runnings": [],
+      "having": [],
+      "order_by": [
+        {
+          "column": "fair_value",
+          "desc": true
+        },
+        {
+          "column": "dim_issuer.issuer",
+          "desc": false
+        }
+      ],
+      "limit": null,
+      "columns": [
+        "dim_issuer.issuer",
+        "fair_value",
+        "cost_basis",
+        "spread_x_par",
+        "par_amount",
+        "mark",
+        "wtd_spread_bps"
       ]
     },
     "issuer_curve": {
@@ -3500,12 +5521,15 @@
       "fact": "fact_holdings",
       "slice_columns": [
         "dim_issuer.sector",
+        "dim_issuer.issuer",
         "dim_fund.fund",
         "dim_rating.rating",
-        "dim_issuer.issuer",
+        "dim_rating.watch",
         "fair_value",
+        "cost",
         "holding_id",
-        "cost"
+        "spread_bps",
+        "par"
       ],
       "filters": null,
       "group_by": [
@@ -3569,12 +5593,15 @@
       "fact": "fact_holdings",
       "slice_columns": [
         "dim_issuer.sector",
+        "dim_issuer.issuer",
         "dim_fund.fund",
         "dim_rating.rating",
-        "dim_issuer.issuer",
+        "dim_rating.watch",
         "fair_value",
+        "cost",
         "holding_id",
-        "cost"
+        "spread_bps",
+        "par"
       ],
       "filters": null,
       "group_by": [
@@ -3604,7 +5631,12 @@
           "den": "cost_basis"
         }
       ],
-      "shares": [],
+      "shares": [
+        {
+          "name": "fv_share",
+          "base": "fair_value"
+        }
+      ],
       "combines": [],
       "ranks": [],
       "runnings": [],
@@ -3624,7 +5656,8 @@
         "dim_issuer.issuer",
         "fair_value",
         "cost_basis",
-        "mark"
+        "mark",
+        "fv_share"
       ]
     },
     "flows": {
@@ -3633,8 +5666,8 @@
       "fact": "fact_cashflows",
       "slice_columns": [
         "dim_date.month",
-        "dim_fund.fund",
         "dim_flow_type.flow_type",
+        "dim_fund.fund",
         "dim_issuer.sector",
         "net_flow:sum",
         "flow_count:count"
@@ -3677,8 +5710,8 @@
       "fact": "fact_cashflows",
       "slice_columns": [
         "dim_date.month",
-        "dim_fund.fund",
         "dim_flow_type.flow_type",
+        "dim_fund.fund",
         "dim_issuer.sector",
         "net_flow:sum",
         "flow_count:count"
@@ -3693,6 +5726,13 @@
           "func": "sum",
           "source": {
             "col": "net_flow:sum"
+          }
+        },
+        {
+          "name": "flow_count",
+          "func": "sum_counts",
+          "source": {
+            "col": "flow_count:count"
           }
         }
       ],
@@ -3712,7 +5752,64 @@
       "limit": null,
       "columns": [
         "dim_date.month",
-        "net_flow"
+        "net_flow",
+        "flow_count"
+      ]
+    },
+    "flows_by_type": {
+      "version": 1,
+      "model": "portfolio_model",
+      "fact": "fact_cashflows",
+      "slice_columns": [
+        "dim_date.month",
+        "dim_flow_type.flow_type",
+        "dim_fund.fund",
+        "dim_issuer.sector",
+        "net_flow:sum",
+        "flow_count:count"
+      ],
+      "filters": null,
+      "group_by": [
+        "dim_flow_type.flow_type"
+      ],
+      "aggregates": [
+        {
+          "name": "net_flow",
+          "func": "sum",
+          "source": {
+            "col": "net_flow:sum"
+          }
+        },
+        {
+          "name": "flow_count",
+          "func": "sum_counts",
+          "source": {
+            "col": "flow_count:count"
+          }
+        }
+      ],
+      "means": [],
+      "ratios": [],
+      "shares": [],
+      "combines": [],
+      "ranks": [],
+      "runnings": [],
+      "having": [],
+      "order_by": [
+        {
+          "column": "net_flow",
+          "desc": true
+        },
+        {
+          "column": "dim_flow_type.flow_type",
+          "desc": false
+        }
+      ],
+      "limit": null,
+      "columns": [
+        "dim_flow_type.flow_type",
+        "net_flow",
+        "flow_count"
       ]
     },
     "flows_by_fund": {
@@ -3721,8 +5818,8 @@
       "fact": "fact_cashflows",
       "slice_columns": [
         "dim_date.month",
-        "dim_fund.fund",
         "dim_flow_type.flow_type",
+        "dim_fund.fund",
         "dim_issuer.sector",
         "net_flow:sum",
         "flow_count:count"
@@ -3776,5 +5873,12 @@
     "concentration": {
       "fixed": "report.py"
     }
+  },
+  "app_compile": {
+    "at": "build",
+    "by": [
+      "Sucrase 3.35.0 (MIT)",
+      "Tailwind CSS 4.1.11 (MIT)"
+    ]
   }
 }

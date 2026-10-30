@@ -17,9 +17,13 @@ Just open `index.html`, or serve the folder:
 cd site && python3 -m http.server 8899   # → http://localhost:8899
 ```
 
-The landing page is a single self-contained `index.html` (styles inline, fonts
-from Google Fonts, one small script for the tamper demo, the walkthrough and the theme toggle). It
-works in both light and dark, following the visitor's system theme.
+The landing page is a single self-contained `index.html` (styles and one small
+script inline: the theme switch, scroll reveals, the hero's trace, the "trace a
+number" demo, the filter before/after and the on-demand live report). Its type is
+Geist and Geist Mono, self-hosted in `assets/fonts/` (the files TraceBi's reports
+and app use; SIL OFL, `assets/fonts/Geist-OFL.txt`), so the page requests nothing
+from any other host. It works in light and dark, following the visitor's system
+theme until they pick one, and honours `prefers-reduced-motion`.
 
 ## The docs site (`site/docs/`)
 
@@ -59,31 +63,37 @@ internal hostname is not a public URL). nginx also proxies
 
 ## Status
 
-The **ask / build / schedule page**, corrected to the product of 2026-10-24
-(first written 2026-09-23, following `design/strategy/vision-and-positioning.md`).
-It leads with the three ways to use TraceBi — ask a question, build a one-off
-analysis, schedule a recurring report — all from one set of approved
-definitions, and says what the demo at `/app` serves (the reference project's
-four models; Reports, Ask, Data, Review, Docs). Then the agent and human roles,
-scheduling, the three-phase workflow (SQL transforms with sink contracts, YAML
-models, `report.json` + `app.jsx` / `template.html` reports), the walkthrough
-(commands and output copied from real runs), the semantic layer, guardrails,
-styling (D3 charts), the output, its trace and the live page, and open source
-vs the planned Cloud. The word "receipt" is retired for **trace** and
-**manifest**; only the demo block's CSS class names keep it.
+The **"every number shows its work" page** (2026-10-30, SITE-2; NOTES.md has
+the story and the honesty choices). Plain words first, for a reader with no
+glossary: the problem (a number nobody can explain), what TraceBi is, how it
+works in three steps, why it matters, who it is for; then the proof (trace a
+number, live reports, agents and the workbench, print), teams, open source, a
+"for engineers" layer (the three phases, the CLI, verify, what a trace does and
+does not claim), the FAQ and how to start. Technical detail sits behind "For
+engineers" disclosures and links into `/docs/`. The word "receipt" is retired
+for **trace** and **manifest**.
 
-`assets/` holds the hero screenshot and the Open Graph image; `sample/` holds a
-built copy of the reference project's `portfolio_showcase` report and its
-manifest, linked as "Download a sample report". Both are copied into the
-Vercel output by `vercel-build.sh`. Rebuild the sample when the showcase
-changes (`tracebi report build portfolio_model/portfolio_showcase` in
-`examples/portfolio_project/`, then copy `output/portfolio_model/portfolio_showcase.html`
-and its `.html.manifest.json`, with `output_path` set to the bare file name;
-`tracebi verify --file site/sample/portfolio_showcase.html` must read FILE
-INTACT). `assets/showcase.jpg` is that sample's first screen at 1440 × 900,
-light, captured at 2× and saved as JPEG quality 85; `assets/og.jpg` is the same
-page at 1200 × 630.
+What is real on it:
 
-Numbers on the page (row counts, figure counts, file sizes, verify output) are
-copied from real runs of the reference project. Re-check them when the
-reference project changes.
+- `sample/` holds three builds of the reference workspace, each with its
+  manifest: `portfolio_showcase` (the app lane, Signal), `affordability` (the
+  editorial long read) and `portfolio_dashboard`. Rebuild them when the reports
+  change: in `examples/portfolio_project/` run `python run_workflow.py` (or
+  `tracebi report build <name>`), copy each `output/<model>/<name>.html` and its
+  `.html.manifest.json` here with `output_path` set to the bare file name, and
+  check `tracebi verify --file site/sample/<name>.html` reads FILE INTACT.
+  Restore the tracked manifests under `examples/portfolio_project/output/`
+  afterwards.
+- `assets/shots/` are captures of those builds (1440 × 900 at 2×, light and
+  dark; one with the trace drawer open, one filtered to Software), the
+  workbench MCP Apps panel running against the reference workspace (the chat
+  beside it is labelled an illustration), and pages 1 and 4 of
+  `portfolio_dashboard`'s PDF (`--format pdf`, page 4 is "How these numbers
+  were made"). Each is AVIF and WebP at two widths plus a JPEG fallback
+  (the affordability and dashboard captures, used only as thumbnails: AVIF at
+  800 and the JPEG).
+- `assets/og.jpg` is a 1200 × 630 card: the headline and the showcase capture.
+- The trace demo's facts (sources, `fact_holdings` 25 rows and 5 checks, the
+  measure, the query, fingerprint `f1abefad…`) and the verify lines are copied
+  from the sample's manifest and from running `tracebi verify` on it.
+  Re-check them when the reference workspace changes.

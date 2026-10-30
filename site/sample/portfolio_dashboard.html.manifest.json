@@ -1,0 +1,1473 @@
+{
+  "schema_version": 2,
+  "report_name": "Portfolio Dashboard",
+  "rendered_at": "2026-10-30T16:48:04.732947+00:00",
+  "rendered_by": "workflow",
+  "format": "html",
+  "output_path": "portfolio_dashboard.html",
+  "git_sha": "cf38540cdf62c06c8db5ed987adff35755de7ad7",
+  "parameters": {},
+  "sections": [
+    {
+      "section_type": "table",
+      "title": "totals",
+      "id": "totals",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        1,
+        5
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_holdings' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_holdings",
+          "timestamp": "2026-10-30T16:48:04.516824+00:00",
+          "metadata": {
+            "rows_loaded": 25,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_holdings",
+              "fingerprint": "9862ad1f4acf91db1d7304ab9d81c90ee5f5ae109b8fedc0c364574658080faf",
+              "rows": 25
+            }
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Derived measure column(s): positions = holding_id, unrealized = fair_value - cost, cost_basis = cost",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:04.520415+00:00",
+          "metadata": {
+            "derived": {
+              "positions": "holding_id",
+              "unrealized": "fair_value - cost",
+              "cost_basis": "cost"
+            }
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Ratio measure(s): mark = fair_value / cost_basis",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:04.534954+00:00",
+          "metadata": {
+            "ratios": {
+              "mark": [
+                "fair_value",
+                "cost_basis"
+              ]
+            }
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:04.534994+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "engine_version": "1.5.6",
+            "fingerprint_algo": 2,
+            "rows_out": 1,
+            "measures": {
+              "fair_value": "sum",
+              "positions": "count",
+              "unrealized": "sum",
+              "cost_basis": "sum"
+            },
+            "model": "portfolio_model",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": [
+                "fair_value",
+                "positions",
+                "unrealized",
+                "mark"
+              ],
+              "dimensions": [],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "8adc58274e812a288d6543c292f042653402407b2ec902847fd1d28a6b9bce5f",
+      "columns": null,
+      "max_rows": null
+    },
+    {
+      "section_type": "table",
+      "title": "by_sector",
+      "id": "by_sector",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        6,
+        2
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_holdings' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_holdings",
+          "timestamp": "2026-10-30T16:48:04.568077+00:00",
+          "metadata": {
+            "rows_loaded": 25,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_holdings",
+              "fingerprint": "9862ad1f4acf91db1d7304ab9d81c90ee5f5ae109b8fedc0c364574658080faf",
+              "rows": 25
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_issuer' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_issuer",
+          "timestamp": "2026-10-30T16:48:04.574002+00:00",
+          "metadata": {
+            "rows_loaded": 13,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_issuer",
+              "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
+              "rows": 13
+            }
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:04.578238+00:00",
+          "metadata": {
+            "fact": "fact_holdings",
+            "dimension": "dim_issuer",
+            "fact_key": "issuer_id",
+            "dim_key": "issuer_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "sort",
+          "description": "Ordered by fair_value desc, dim_issuer.sector",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:04.589000+00:00",
+          "metadata": {
+            "order_by": [
+              {
+                "column": "fair_value",
+                "desc": true
+              },
+              {
+                "column": "dim_issuer.sector",
+                "desc": false
+              }
+            ],
+            "limit": null
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:04.589026+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "engine_version": "1.5.6",
+            "fingerprint_algo": 2,
+            "rows_out": 6,
+            "measures": {
+              "fair_value": "sum"
+            },
+            "model": "portfolio_model",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": [
+                "fair_value"
+              ],
+              "dimensions": [
+                "dim_issuer.sector"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false,
+              "order_by": [
+                {
+                  "column": "fair_value",
+                  "desc": true
+                },
+                {
+                  "column": "dim_issuer.sector",
+                  "desc": false
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "ef244f51f80820bcf641fe242790adedee7d8270af7d07b51574245b78203928",
+      "columns": null,
+      "max_rows": null
+    },
+    {
+      "section_type": "table",
+      "title": "by_fund",
+      "id": "by_fund",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        3,
+        2
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_holdings' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_holdings",
+          "timestamp": "2026-10-30T16:48:04.608366+00:00",
+          "metadata": {
+            "rows_loaded": 25,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_holdings",
+              "fingerprint": "9862ad1f4acf91db1d7304ab9d81c90ee5f5ae109b8fedc0c364574658080faf",
+              "rows": 25
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_fund' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_fund",
+          "timestamp": "2026-10-30T16:48:04.611996+00:00",
+          "metadata": {
+            "rows_loaded": 3,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_fund",
+              "fingerprint": "544dcca864e67ca4dd7f74fb0692f2cfe8728b387ca5aa8a3734889048ed40f4",
+              "rows": 3
+            }
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_fund' on fund_id = fund_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:04.614595+00:00",
+          "metadata": {
+            "fact": "fact_holdings",
+            "dimension": "dim_fund",
+            "fact_key": "fund_id",
+            "dim_key": "fund_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "sort",
+          "description": "Ordered by fair_value desc, dim_fund.fund",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:04.622018+00:00",
+          "metadata": {
+            "order_by": [
+              {
+                "column": "fair_value",
+                "desc": true
+              },
+              {
+                "column": "dim_fund.fund",
+                "desc": false
+              }
+            ],
+            "limit": null
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:04.622039+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "engine_version": "1.5.6",
+            "fingerprint_algo": 2,
+            "rows_out": 3,
+            "measures": {
+              "fair_value": "sum"
+            },
+            "model": "portfolio_model",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": [
+                "fair_value"
+              ],
+              "dimensions": [
+                "dim_fund.fund"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false,
+              "order_by": [
+                {
+                  "column": "fair_value",
+                  "desc": true
+                },
+                {
+                  "column": "dim_fund.fund",
+                  "desc": false
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "e65c4726930bcbaa396aa8487e3f83ca85f5f5796beae16a8853fed7ca37cec4",
+      "columns": null,
+      "max_rows": null
+    },
+    {
+      "section_type": "table",
+      "title": "holdings",
+      "id": "holdings",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        13,
+        7
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_holdings' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_holdings",
+          "timestamp": "2026-10-30T16:48:04.640236+00:00",
+          "metadata": {
+            "rows_loaded": 25,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_holdings",
+              "fingerprint": "9862ad1f4acf91db1d7304ab9d81c90ee5f5ae109b8fedc0c364574658080faf",
+              "rows": 25
+            }
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Derived measure column(s): cost_basis = cost, unrealized = fair_value - cost, positions = holding_id",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:04.642236+00:00",
+          "metadata": {
+            "derived": {
+              "cost_basis": "cost",
+              "unrealized": "fair_value - cost",
+              "positions": "holding_id"
+            }
+          }
+        },
+        {
+          "operation": "load",
+          "description": "Loaded 'dim_issuer' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "dim_issuer",
+          "timestamp": "2026-10-30T16:48:04.646925+00:00",
+          "metadata": {
+            "rows_loaded": 13,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "dim_issuer",
+              "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
+              "rows": 13
+            }
+          }
+        },
+        {
+          "operation": "join",
+          "description": "Joined fact 'fact_holdings' \u2192 dim 'dim_issuer' on issuer_id = issuer_id (left)",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:04.649512+00:00",
+          "metadata": {
+            "fact": "fact_holdings",
+            "dimension": "dim_issuer",
+            "fact_key": "issuer_id",
+            "dim_key": "issuer_id",
+            "engine": "duckdb"
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Ratio measure(s): mark = fair_value / cost_basis",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:04.657302+00:00",
+          "metadata": {
+            "ratios": {
+              "mark": [
+                "fair_value",
+                "cost_basis"
+              ]
+            }
+          }
+        },
+        {
+          "operation": "sort",
+          "description": "Ordered by fair_value desc, dim_issuer.issuer, dim_issuer.sector, cost_basis, unrealized, positions, mark",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:04.659549+00:00",
+          "metadata": {
+            "order_by": [
+              {
+                "column": "fair_value",
+                "desc": true
+              },
+              {
+                "column": "dim_issuer.issuer",
+                "desc": false
+              },
+              {
+                "column": "dim_issuer.sector",
+                "desc": false
+              },
+              {
+                "column": "cost_basis",
+                "desc": false
+              },
+              {
+                "column": "unrealized",
+                "desc": false
+              },
+              {
+                "column": "positions",
+                "desc": false
+              },
+              {
+                "column": "mark",
+                "desc": false
+              }
+            ],
+            "limit": null
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:04.659569+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "engine_version": "1.5.6",
+            "fingerprint_algo": 2,
+            "rows_out": 13,
+            "measures": {
+              "fair_value": "sum",
+              "cost_basis": "sum",
+              "unrealized": "sum",
+              "positions": "count"
+            },
+            "model": "portfolio_model",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": [
+                "fair_value",
+                "cost_basis",
+                "unrealized",
+                "mark",
+                "positions"
+              ],
+              "dimensions": [
+                "dim_issuer.issuer",
+                "dim_issuer.sector"
+              ],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false,
+              "order_by": [
+                {
+                  "column": "fair_value",
+                  "desc": true
+                },
+                {
+                  "column": "dim_issuer.issuer",
+                  "desc": false
+                },
+                {
+                  "column": "dim_issuer.sector",
+                  "desc": false
+                },
+                {
+                  "column": "cost_basis",
+                  "desc": false
+                },
+                {
+                  "column": "unrealized",
+                  "desc": false
+                },
+                {
+                  "column": "positions",
+                  "desc": false
+                },
+                {
+                  "column": "mark",
+                  "desc": false
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "53a11e2800e9404704876f31c3ec3be8ecb032c4a197f83cda1947412071ddaa",
+      "columns": null,
+      "max_rows": null
+    },
+    {
+      "section_type": "table",
+      "title": "holdings_totals",
+      "id": "holdings_totals",
+      "dataset_name": "fact_holdings_result",
+      "dataset_shape": [
+        1,
+        4
+      ],
+      "dataset_lineage": [
+        {
+          "operation": "load",
+          "description": "Loaded 'fact_holdings' from connector 'warehouse'",
+          "connector": {
+            "connector_name": "warehouse",
+            "connector_type": "DuckDBConnector"
+          },
+          "source": "fact_holdings",
+          "timestamp": "2026-10-30T16:48:04.678746+00:00",
+          "metadata": {
+            "rows_loaded": 25,
+            "filter": null,
+            "columns": null,
+            "pushdown": false,
+            "input": {
+              "table": "fact_holdings",
+              "fingerprint": "9862ad1f4acf91db1d7304ab9d81c90ee5f5ae109b8fedc0c364574658080faf",
+              "rows": 25
+            }
+          }
+        },
+        {
+          "operation": "assign",
+          "description": "Derived measure column(s): cost_basis = cost, unrealized = fair_value - cost, positions = holding_id",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:04.680777+00:00",
+          "metadata": {
+            "derived": {
+              "cost_basis": "cost",
+              "unrealized": "fair_value - cost",
+              "positions": "holding_id"
+            }
+          }
+        },
+        {
+          "operation": "transform",
+          "description": "Star-schema query executed via duckdb",
+          "connector": null,
+          "source": null,
+          "timestamp": "2026-10-30T16:48:04.687850+00:00",
+          "metadata": {
+            "engine": "duckdb",
+            "engine_version": "1.5.6",
+            "fingerprint_algo": 2,
+            "rows_out": 1,
+            "measures": {
+              "fair_value": "sum",
+              "cost_basis": "sum",
+              "unrealized": "sum",
+              "positions": "count"
+            },
+            "model": "portfolio_model",
+            "query_spec": {
+              "fact": "fact_holdings",
+              "measures": [
+                "fair_value",
+                "cost_basis",
+                "unrealized",
+                "positions"
+              ],
+              "dimensions": [],
+              "filters": {},
+              "aggregate": true,
+              "allow_fanout": false
+            }
+          }
+        }
+      ],
+      "dataset_fingerprint": "1f1bfa102d7c629dc706f8974992c53911bc935dff8f0aff8b0c0ea98373a589",
+      "columns": null,
+      "max_rows": null
+    }
+  ],
+  "embedded_data": [
+    {
+      "name": "totals",
+      "embedded_sha256": "8adc58274e812a288d6543c292f042653402407b2ec902847fd1d28a6b9bce5f",
+      "query_spec": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fair_value",
+          "positions",
+          "unrealized",
+          "mark"
+        ],
+        "dimensions": [],
+        "filters": {},
+        "aggregate": true,
+        "allow_fanout": false
+      },
+      "model": "portfolio_model"
+    },
+    {
+      "name": "by_sector",
+      "embedded_sha256": "ef244f51f80820bcf641fe242790adedee7d8270af7d07b51574245b78203928",
+      "query_spec": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fair_value"
+        ],
+        "dimensions": [
+          "dim_issuer.sector"
+        ],
+        "filters": {},
+        "aggregate": true,
+        "allow_fanout": false,
+        "order_by": [
+          {
+            "column": "fair_value",
+            "desc": true
+          },
+          {
+            "column": "dim_issuer.sector",
+            "desc": false
+          }
+        ]
+      },
+      "model": "portfolio_model"
+    },
+    {
+      "name": "by_fund",
+      "embedded_sha256": "e65c4726930bcbaa396aa8487e3f83ca85f5f5796beae16a8853fed7ca37cec4",
+      "query_spec": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fair_value"
+        ],
+        "dimensions": [
+          "dim_fund.fund"
+        ],
+        "filters": {},
+        "aggregate": true,
+        "allow_fanout": false,
+        "order_by": [
+          {
+            "column": "fair_value",
+            "desc": true
+          },
+          {
+            "column": "dim_fund.fund",
+            "desc": false
+          }
+        ]
+      },
+      "model": "portfolio_model"
+    },
+    {
+      "name": "holdings",
+      "embedded_sha256": "53a11e2800e9404704876f31c3ec3be8ecb032c4a197f83cda1947412071ddaa",
+      "query_spec": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fair_value",
+          "cost_basis",
+          "unrealized",
+          "mark",
+          "positions"
+        ],
+        "dimensions": [
+          "dim_issuer.issuer",
+          "dim_issuer.sector"
+        ],
+        "filters": {},
+        "aggregate": true,
+        "allow_fanout": false,
+        "order_by": [
+          {
+            "column": "fair_value",
+            "desc": true
+          },
+          {
+            "column": "dim_issuer.issuer",
+            "desc": false
+          },
+          {
+            "column": "dim_issuer.sector",
+            "desc": false
+          },
+          {
+            "column": "cost_basis",
+            "desc": false
+          },
+          {
+            "column": "unrealized",
+            "desc": false
+          },
+          {
+            "column": "positions",
+            "desc": false
+          },
+          {
+            "column": "mark",
+            "desc": false
+          }
+        ]
+      },
+      "model": "portfolio_model"
+    },
+    {
+      "name": "holdings_totals",
+      "embedded_sha256": "1f1bfa102d7c629dc706f8974992c53911bc935dff8f0aff8b0c0ea98373a589",
+      "query_spec": {
+        "fact": "fact_holdings",
+        "measures": [
+          "fair_value",
+          "cost_basis",
+          "unrealized",
+          "positions"
+        ],
+        "dimensions": [],
+        "filters": {},
+        "aggregate": true,
+        "allow_fanout": false
+      },
+      "model": "portfolio_model"
+    }
+  ],
+  "stage": "final",
+  "figures": [
+    {
+      "id": "kpi-fair-value",
+      "kind": "value",
+      "binding": "totals",
+      "cell": "fair_value"
+    },
+    {
+      "id": "kpi-positions",
+      "kind": "value",
+      "binding": "totals",
+      "cell": "positions"
+    },
+    {
+      "id": "kpi-unrealized",
+      "kind": "value",
+      "binding": "totals",
+      "cell": "unrealized"
+    },
+    {
+      "id": "kpi-mark",
+      "kind": "value",
+      "binding": "totals",
+      "cell": "mark"
+    },
+    {
+      "id": "fig-chart-by_sector-fair_value",
+      "kind": "chart",
+      "binding": "by_sector"
+    },
+    {
+      "id": "fig-chart-by_fund-fair_value",
+      "kind": "chart",
+      "binding": "by_fund"
+    },
+    {
+      "id": "holdings-table",
+      "kind": "table",
+      "binding": "holdings"
+    }
+  ],
+  "transform_contracts": {
+    "dim_fund": {
+      "status": "satisfied",
+      "transform": "holdings",
+      "checked_at": "2026-10-30T16:47:58.347820+00:00",
+      "checks": 2,
+      "fingerprint": "544dcca864e67ca4dd7f74fb0692f2cfe8728b387ca5aa8a3734889048ed40f4",
+      "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
+      "sources": {
+        "crm.issuer_ratings": {
+          "connection": "crm",
+          "table": "issuer_ratings",
+          "source_fallback": "csv",
+          "fallback": "inputs/issuer_ratings.csv",
+          "rows": 12,
+          "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
+          "loaded_at": "2026-10-30T16:47:57.720974+00:00",
+          "method": "pandas"
+        }
+      },
+      "writer": "holdings_transform",
+      "read": [
+        "crm.issuer_ratings \u2014 snapshot inputs/issuer_ratings.csv",
+        "inputs/holdings.csv"
+      ]
+    },
+    "dim_issuer": {
+      "status": "satisfied",
+      "transform": "holdings",
+      "checked_at": "2026-10-30T16:47:58.347820+00:00",
+      "checks": 3,
+      "fingerprint": "44810b532d33a048d7f0f35dfebc891b1d6d635dca7e699d1ded305f4afda4e7",
+      "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
+      "sources": {
+        "crm.issuer_ratings": {
+          "connection": "crm",
+          "table": "issuer_ratings",
+          "source_fallback": "csv",
+          "fallback": "inputs/issuer_ratings.csv",
+          "rows": 12,
+          "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
+          "loaded_at": "2026-10-30T16:47:57.720974+00:00",
+          "method": "pandas"
+        }
+      },
+      "writer": "holdings_transform",
+      "read": [
+        "crm.issuer_ratings \u2014 snapshot inputs/issuer_ratings.csv",
+        "inputs/holdings.csv"
+      ]
+    },
+    "fact_holdings": {
+      "status": "satisfied",
+      "transform": "holdings",
+      "checked_at": "2026-10-30T16:47:58.347820+00:00",
+      "checks": 5,
+      "fingerprint": "9862ad1f4acf91db1d7304ab9d81c90ee5f5ae109b8fedc0c364574658080faf",
+      "note": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
+      "sources": {
+        "crm.issuer_ratings": {
+          "connection": "crm",
+          "table": "issuer_ratings",
+          "source_fallback": "csv",
+          "fallback": "inputs/issuer_ratings.csv",
+          "rows": 12,
+          "fingerprint": "5840931a413e919c00885ae9ced2bf1eebdd199625263a2beada488d081e2ce4",
+          "loaded_at": "2026-10-30T16:47:57.720974+00:00",
+          "method": "pandas"
+        }
+      },
+      "writer": "holdings_transform",
+      "read": [
+        "crm.issuer_ratings \u2014 snapshot inputs/issuer_ratings.csv",
+        "inputs/holdings.csv"
+      ]
+    }
+  },
+  "methodology": {
+    "transform_notes": {
+      "dim_fund": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
+      "dim_issuer": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted",
+      "fact_holdings": "issuer and instrument type parsed from the prose position blob; sectors normalised from each administrator's spelling; money coerced from strings; exact double-booked positions deduped; rows with no keyable issuer dropped and counted"
+    },
+    "check_notes": [
+      {
+        "transform": "holdings_transform",
+        "check": "rows",
+        "table": "fact_holdings",
+        "note": "a Schedule of Investments under 10 positions means the raw pull is truncated, not that the book shrank"
+      },
+      {
+        "transform": "holdings_transform",
+        "check": "values",
+        "table": "dim_rating",
+        "note": "the CRM's ratings on the agency scale; an issuer it does not cover is Unrated, never dropped"
+      },
+      {
+        "transform": "holdings_transform",
+        "check": "rows",
+        "table": "fact_holdings_by_sector",
+        "note": "a sink view over fact_holdings and dim_issuer, checked as a table is; every held position has a sector, so it has at least one row"
+      }
+    ],
+    "measure_notes": {
+      "fair_value": "Total fair value",
+      "positions": "Position count",
+      "unrealized": "Unrealized gain / loss",
+      "mark": "Fair value / cost",
+      "cost_basis": "Total cost basis"
+    }
+  },
+  "semantic_contract": {
+    "portfolio_model": {
+      "slice": {
+        "model": "portfolio_model",
+        "facts": [
+          {
+            "name": "fact_holdings",
+            "table": "fact_holdings",
+            "measures": [
+              "cost",
+              "fair_value",
+              "par",
+              "spread_bps"
+            ],
+            "foreign_keys": {
+              "dim_fund": "fund_id",
+              "dim_issuer": "issuer_id",
+              "dim_rating": "rating_id"
+            }
+          }
+        ],
+        "dimensions": [
+          {
+            "name": "dim_fund",
+            "table": "dim_fund",
+            "key": "fund_id",
+            "attributes": [
+              "fund"
+            ]
+          },
+          {
+            "name": "dim_issuer",
+            "table": "dim_issuer",
+            "key": "issuer_id",
+            "attributes": [
+              "issuer",
+              "sector"
+            ]
+          }
+        ],
+        "measures": [
+          {
+            "agg": "sum",
+            "column": "cost",
+            "description": "Total cost basis",
+            "format": "currency0",
+            "kind": "simple",
+            "name": "cost_basis",
+            "synonyms": [
+              "cost",
+              "book cost"
+            ]
+          },
+          {
+            "agg": "sum",
+            "column": "fair_value",
+            "description": "Total fair value",
+            "format": "currency0",
+            "kind": "simple",
+            "name": "fair_value",
+            "synonyms": [
+              "market value",
+              "FV",
+              "mark-to-market value"
+            ]
+          },
+          {
+            "description": "Fair value / cost",
+            "format": "percent",
+            "kind": "ratio",
+            "name": "mark",
+            "ratio": [
+              "fair_value",
+              "cost_basis"
+            ],
+            "synonyms": [
+              "price",
+              "mark to cost"
+            ]
+          },
+          {
+            "agg": "count",
+            "column": "holding_id",
+            "description": "Position count",
+            "kind": "simple",
+            "name": "positions",
+            "synonyms": [
+              "holdings",
+              "loans"
+            ]
+          },
+          {
+            "agg": "sum",
+            "description": "Unrealized gain / loss",
+            "expr": "fair_value - cost",
+            "format": "currency0",
+            "kind": "expression",
+            "name": "unrealized",
+            "synonyms": [
+              "unrealized gain",
+              "unrealized P&L"
+            ]
+          }
+        ],
+        "tables": [
+          {
+            "name": "dim_fund",
+            "connector": "warehouse",
+            "source": "dim_fund"
+          },
+          {
+            "name": "dim_issuer",
+            "connector": "warehouse",
+            "source": "dim_issuer"
+          },
+          {
+            "name": "fact_holdings",
+            "connector": "warehouse",
+            "source": "fact_holdings"
+          }
+        ]
+      },
+      "sha256": "8c53959d61f08435ac549cc079ce0f25933c5164dadaa92e8072e882b3963e54"
+    }
+  },
+  "slice": {
+    "fact_holdings": {
+      "block": "tracebi-slice-fact_holdings",
+      "model": "portfolio_model",
+      "fact": "fact_holdings",
+      "grain": [
+        "dim_issuer.sector",
+        "dim_fund.fund",
+        "dim_issuer.issuer"
+      ],
+      "base_grain": true,
+      "reason": "measure 'unrealized' is a row expression",
+      "columns": [
+        {
+          "name": "dim_issuer.sector",
+          "type": "string"
+        },
+        {
+          "name": "dim_fund.fund",
+          "type": "string"
+        },
+        {
+          "name": "dim_issuer.issuer",
+          "type": "string"
+        },
+        {
+          "name": "fair_value",
+          "type": "number"
+        },
+        {
+          "name": "holding_id",
+          "type": "number"
+        },
+        {
+          "name": "cost",
+          "type": "number"
+        }
+      ],
+      "rows": 25,
+      "payload_sha256": "1763a7c87592a8e105fa5b2b76729cd2e87214b92edcb83a3c89ff26464caeaa",
+      "embed": "required",
+      "bindings": [
+        "totals",
+        "by_sector",
+        "by_fund",
+        "holdings",
+        "holdings_totals"
+      ]
+    }
+  },
+  "plans": {
+    "totals": {
+      "version": 1,
+      "model": "portfolio_model",
+      "fact": "fact_holdings",
+      "slice_columns": [
+        "dim_issuer.sector",
+        "dim_fund.fund",
+        "dim_issuer.issuer",
+        "fair_value",
+        "holding_id",
+        "cost"
+      ],
+      "filters": null,
+      "group_by": [],
+      "aggregates": [
+        {
+          "name": "fair_value",
+          "func": "sum",
+          "source": {
+            "col": "fair_value"
+          }
+        },
+        {
+          "name": "positions",
+          "func": "count",
+          "source": {
+            "col": "holding_id"
+          }
+        },
+        {
+          "name": "unrealized",
+          "func": "sum",
+          "source": {
+            "op": "-",
+            "args": [
+              {
+                "col": "fair_value"
+              },
+              {
+                "col": "cost"
+              }
+            ]
+          }
+        },
+        {
+          "name": "cost_basis",
+          "func": "sum",
+          "source": {
+            "col": "cost"
+          }
+        }
+      ],
+      "means": [],
+      "ratios": [
+        {
+          "name": "mark",
+          "num": "fair_value",
+          "den": "cost_basis"
+        }
+      ],
+      "shares": [],
+      "combines": [],
+      "ranks": [],
+      "runnings": [],
+      "having": [],
+      "order_by": [],
+      "limit": null,
+      "columns": [
+        "fair_value",
+        "positions",
+        "unrealized",
+        "cost_basis",
+        "mark"
+      ]
+    },
+    "by_sector": {
+      "version": 1,
+      "model": "portfolio_model",
+      "fact": "fact_holdings",
+      "slice_columns": [
+        "dim_issuer.sector",
+        "dim_fund.fund",
+        "dim_issuer.issuer",
+        "fair_value",
+        "holding_id",
+        "cost"
+      ],
+      "filters": null,
+      "group_by": [
+        "dim_issuer.sector"
+      ],
+      "aggregates": [
+        {
+          "name": "fair_value",
+          "func": "sum",
+          "source": {
+            "col": "fair_value"
+          }
+        }
+      ],
+      "means": [],
+      "ratios": [],
+      "shares": [],
+      "combines": [],
+      "ranks": [],
+      "runnings": [],
+      "having": [],
+      "order_by": [
+        {
+          "column": "fair_value",
+          "desc": true
+        },
+        {
+          "column": "dim_issuer.sector",
+          "desc": false
+        }
+      ],
+      "limit": null,
+      "columns": [
+        "dim_issuer.sector",
+        "fair_value"
+      ]
+    },
+    "by_fund": {
+      "version": 1,
+      "model": "portfolio_model",
+      "fact": "fact_holdings",
+      "slice_columns": [
+        "dim_issuer.sector",
+        "dim_fund.fund",
+        "dim_issuer.issuer",
+        "fair_value",
+        "holding_id",
+        "cost"
+      ],
+      "filters": null,
+      "group_by": [
+        "dim_fund.fund"
+      ],
+      "aggregates": [
+        {
+          "name": "fair_value",
+          "func": "sum",
+          "source": {
+            "col": "fair_value"
+          }
+        }
+      ],
+      "means": [],
+      "ratios": [],
+      "shares": [],
+      "combines": [],
+      "ranks": [],
+      "runnings": [],
+      "having": [],
+      "order_by": [
+        {
+          "column": "fair_value",
+          "desc": true
+        },
+        {
+          "column": "dim_fund.fund",
+          "desc": false
+        }
+      ],
+      "limit": null,
+      "columns": [
+        "dim_fund.fund",
+        "fair_value"
+      ]
+    },
+    "holdings": {
+      "version": 1,
+      "model": "portfolio_model",
+      "fact": "fact_holdings",
+      "slice_columns": [
+        "dim_issuer.sector",
+        "dim_fund.fund",
+        "dim_issuer.issuer",
+        "fair_value",
+        "holding_id",
+        "cost"
+      ],
+      "filters": null,
+      "group_by": [
+        "dim_issuer.issuer",
+        "dim_issuer.sector"
+      ],
+      "aggregates": [
+        {
+          "name": "fair_value",
+          "func": "sum",
+          "source": {
+            "col": "fair_value"
+          }
+        },
+        {
+          "name": "cost_basis",
+          "func": "sum",
+          "source": {
+            "col": "cost"
+          }
+        },
+        {
+          "name": "unrealized",
+          "func": "sum",
+          "source": {
+            "op": "-",
+            "args": [
+              {
+                "col": "fair_value"
+              },
+              {
+                "col": "cost"
+              }
+            ]
+          }
+        },
+        {
+          "name": "positions",
+          "func": "count",
+          "source": {
+            "col": "holding_id"
+          }
+        }
+      ],
+      "means": [],
+      "ratios": [
+        {
+          "name": "mark",
+          "num": "fair_value",
+          "den": "cost_basis"
+        }
+      ],
+      "shares": [],
+      "combines": [],
+      "ranks": [],
+      "runnings": [],
+      "having": [],
+      "order_by": [
+        {
+          "column": "fair_value",
+          "desc": true
+        },
+        {
+          "column": "dim_issuer.issuer",
+          "desc": false
+        },
+        {
+          "column": "dim_issuer.sector",
+          "desc": false
+        }
+      ],
+      "limit": null,
+      "columns": [
+        "dim_issuer.issuer",
+        "dim_issuer.sector",
+        "fair_value",
+        "cost_basis",
+        "unrealized",
+        "positions",
+        "mark"
+      ]
+    },
+    "holdings_totals": {
+      "version": 1,
+      "model": "portfolio_model",
+      "fact": "fact_holdings",
+      "slice_columns": [
+        "dim_issuer.sector",
+        "dim_fund.fund",
+        "dim_issuer.issuer",
+        "fair_value",
+        "holding_id",
+        "cost"
+      ],
+      "filters": null,
+      "group_by": [],
+      "aggregates": [
+        {
+          "name": "fair_value",
+          "func": "sum",
+          "source": {
+            "col": "fair_value"
+          }
+        },
+        {
+          "name": "cost_basis",
+          "func": "sum",
+          "source": {
+            "col": "cost"
+          }
+        },
+        {
+          "name": "unrealized",
+          "func": "sum",
+          "source": {
+            "op": "-",
+            "args": [
+              {
+                "col": "fair_value"
+              },
+              {
+                "col": "cost"
+              }
+            ]
+          }
+        },
+        {
+          "name": "positions",
+          "func": "count",
+          "source": {
+            "col": "holding_id"
+          }
+        }
+      ],
+      "means": [],
+      "ratios": [],
+      "shares": [],
+      "combines": [],
+      "ranks": [],
+      "runnings": [],
+      "having": [],
+      "order_by": [],
+      "limit": null,
+      "columns": [
+        "fair_value",
+        "cost_basis",
+        "unrealized",
+        "positions"
+      ]
+    }
+  },
+  "app_compile": {
+    "at": "build",
+    "by": [
+      "Sucrase 3.35.0 (MIT)",
+      "Tailwind CSS 4.1.11 (MIT)"
+    ]
+  }
+}

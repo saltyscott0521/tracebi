@@ -2,836 +2,1198 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>TraceBi — ask it, build it, schedule it</title>
+<title>TraceBi: reports where every number shows its work</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="The report framework for AI agents. Ask a question and get an answer in seconds, build a one-off analysis with an agent, or schedule the reports worth repeating. All from one set of approved definitions, and every number can be re-run.">
-<meta property="og:title" content="TraceBi — every report your team needs. Ask it, build it, or schedule it.">
-<meta property="og:description" content="The report framework for AI agents. Answers, one-off analyses and scheduled reports from one set of approved definitions, with every number re-checkable.">
+<meta name="description" content="Open-source reporting for teams and their AI agents. Click any figure in a TraceBi report to see the data it came from, the definition behind it, and a check anyone can re-run to confirm it still comes out the same.">
+<meta name="theme-color" content="#fafaf9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b0b0d" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="TraceBi: reports where every number shows its work">
+<meta property="og:description" content="Open-source reporting for teams and their AI agents. Every figure carries its trace: where it came from, what it means, and a check anyone can re-run.">
 <meta property="og:image" content="https://tracebi.com/assets/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta property="og:type" content="website">
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
-
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%231f3fff%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preload" href="/assets/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<script>
+  /* Before first paint: the visitor's saved theme, and a flag that turns on
+     the scroll reveals (without JS every section is simply shown). */
+  try{var t=localStorage.getItem('tb-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}
+  document.documentElement.className+=' js';
+</script>
 <style>
   :root{
-    /* TraceBi's own system — the web UI + report palette (navy ink, cool
-       blue-grey ground, a blue accent; green/amber/red reserved for verdicts). */
-    --paper:#eef2f8;
-    --paper-2:#e3ebf5;
+    /* The site's tokens: the Signal house theme's ground, ink and blue, in the
+       Geist family the app and every report use. site/build_docs.py copies
+       this block (through the dark one) into the docs site. */
+    --paper:#fafaf9;
+    --paper-2:#f2f2f0;
     --card:#ffffff;
-    --ink:#0a1628;
-    --ink-2:#2e4260;
-    --ink-soft:#5a6e88;
-    --rule:#dce4ef;
-    --rule-2:#e7eef7;
-    --accent:#2e74b5;      /* the TraceBi blue — brand highlight */
-    --brand:#091a55;       /* deep navy — solid nav / buttons */
-    --repro:#15803d;       /* verified / reproduces */
-    --repro-bg:#e4f1e8;
-    --altered:#b91c1c;     /* file altered / wrong */
-    --altered-bg:#f7e5e4;
-    --stale:#875312;       /* unverified / degraded */
-    --stale-bg:#f4ecdb;
+    --ink:#111113;
+    --ink-2:#3b3b41;
+    --ink-soft:#64646b;
+    --rule:#e4e4e1;
+    --rule-2:#ededea;
+    --accent:#1a35d6;
+    --accent-fill:#1f3fff;
+    --on-accent:#ffffff;
+    --accent-soft:#eef1ff;
+    --brand:#1f3fff;
+    --warm:#ff6b2b;
+    --mint:#00a676;
+    --repro:#05784f;
+    --repro-bg:#e3f4ec;
+    --altered:#b4232a;
+    --altered-bg:#fbe9e8;
+    --stale:#8a5a00;
+    --stale-bg:#fbf1dc;
+    --glow-a:rgba(31,63,255,.18);
+    --glow-b:rgba(255,107,43,.14);
+    --shadow:0 1px 2px rgba(17,17,19,.06),0 12px 32px -12px rgba(17,17,19,.18);
+    --shadow-lg:0 2px 4px rgba(17,17,19,.05),0 40px 80px -24px rgba(17,17,19,.28);
 
-    --sans:"Source Sans 3",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    --serif:"Source Sans 3",system-ui,sans-serif;
-    --mono:"Source Code Pro",ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:"Geist",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --serif:"Geist",system-ui,sans-serif;
+    --mono:"Geist Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
 
-    --maxw:920px;
-    --measure:34rem;
-    --r:8px;
+    --maxw:1180px;
+    --measure:36rem;
+    --r:12px;
   }
-  :root:not([data-theme="light"]){
-    @media (prefers-color-scheme:dark){
-      --paper:#0d1623;
-      --paper-2:#131f30;
-      --card:#1a2a3e;
-      --ink:#dde8f5;
-      --ink-2:#b3c4db;
-      --ink-soft:#8199b8;
-      --rule:#2a3d54;
-      --rule-2:#223449;
-      --accent:#6aa9e0;
-      --brand:#6aa9e0;
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b0b0d;
+      --paper-2:#141417;
+      --card:#17171a;
+      --ink:#f2f2f0;
+      --ink-2:#c9c9cf;
+      --ink-soft:#9a9aa3;
+      --rule:#2a2a30;
+      --rule-2:#202025;
+      --accent:#9aa8ff;
+      --accent-fill:#5c74ff;
+      --on-accent:#05081f;
+      --accent-soft:#171c3a;
+      --brand:#7d90ff;
+      --warm:#ff8a55;
+      --mint:#34d399;
       --repro:#4ade80;
-      --repro-bg:#122c1d;
-      --altered:#f08579;
-      --altered-bg:#331a18;
-      --stale:#e0a94e;
-      --stale-bg:#2e2413;
+      --repro-bg:#10291c;
+      --altered:#ff8f86;
+      --altered-bg:#331716;
+      --stale:#f0b85a;
+      --stale-bg:#2d2412;
+      --glow-a:rgba(92,116,255,.26);
+      --glow-b:rgba(255,107,43,.12);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px -12px rgba(0,0,0,.6);
+      --shadow-lg:0 2px 4px rgba(0,0,0,.4),0 40px 80px -24px rgba(0,0,0,.8);
     }
   }
   :root[data-theme="dark"]{
-    --paper:#0d1623;
-    --paper-2:#131f30;
-    --card:#1a2a3e;
-    --ink:#dde8f5;
-    --ink-2:#b3c4db;
-    --ink-soft:#8199b8;
-    --rule:#2a3d54;
-    --rule-2:#223449;
-    --accent:#6aa9e0;
-    --brand:#6aa9e0;
+    --paper:#0b0b0d;
+    --paper-2:#141417;
+    --card:#17171a;
+    --ink:#f2f2f0;
+    --ink-2:#c9c9cf;
+    --ink-soft:#9a9aa3;
+    --rule:#2a2a30;
+    --rule-2:#202025;
+    --accent:#9aa8ff;
+    --accent-fill:#5c74ff;
+    --on-accent:#05081f;
+    --accent-soft:#171c3a;
+    --brand:#7d90ff;
+    --warm:#ff8a55;
+    --mint:#34d399;
     --repro:#4ade80;
-    --repro-bg:#122c1d;
-    --altered:#f08579;
-    --altered-bg:#331a18;
-    --stale:#e0a94e;
-    --stale-bg:#2e2413;
+    --repro-bg:#10291c;
+    --altered:#ff8f86;
+    --altered-bg:#331716;
+    --stale:#f0b85a;
+    --stale-bg:#2d2412;
+    --glow-a:rgba(92,116,255,.26);
+    --glow-b:rgba(255,107,43,.12);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 12px 32px -12px rgba(0,0,0,.6);
+    --shadow-lg:0 2px 4px rgba(0,0,0,.4),0 40px 80px -24px rgba(0,0,0,.8);
   }
+
+  @font-face{font-family:"Geist";src:url("/assets/fonts/geist.woff2") format("woff2");font-weight:100 900;font-display:swap}
+  @font-face{font-family:"Geist Mono";src:url("/assets/fonts/geist-mono.woff2") format("woff2");font-weight:100 900;font-display:swap}
 
   *{box-sizing:border-box}
-  html{-webkit-text-size-adjust:100%}
-  body{
-    margin:0;
-    background:var(--paper);
-    color:var(--ink);
-    font-family:var(--sans);
-    font-size:17px;
-    line-height:1.6;
-    -webkit-font-smoothing:antialiased;
-    text-rendering:optimizeLegibility;
-  }
+  html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:76px}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:17px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow-x:hidden}
+  img{max-width:100%;height:auto;display:block}
+  a{color:var(--accent);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px;text-decoration-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+  a:hover{text-decoration-color:var(--accent)}
+  :focus-visible{outline:2px solid var(--accent-fill);outline-offset:3px;border-radius:6px}
+  h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.025em;text-wrap:balance}
+  p{margin:0 0 1em}
+  code,.mono,pre,.cmd{font-variant-ligatures:none;font-feature-settings:"calt" 0,"liga" 0}
+  code,.mono{font-family:var(--mono);font-size:.88em}
   .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
-  section{padding:clamp(48px,7vw,88px) 0}
-  section + section{border-top:1px solid var(--rule-2)}
+  .skip{position:absolute;left:-9999px;top:8px;z-index:100;background:var(--card);padding:.5em 1em;border-radius:8px}
+  .skip:focus{left:12px}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-  h1,h2,h3{font-family:var(--sans);font-weight:600;letter-spacing:-.02em;text-wrap:balance;margin:0}
-  h2{font-size:clamp(1.7rem,3.6vw,2.5rem);line-height:1.08;margin-bottom:.5em}
-  h3{font-size:1.22rem;line-height:1.2;letter-spacing:0}
-  p{margin:0 0 1.05em;max-width:var(--measure)}
-  a{color:var(--accent);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--accent) 35%,transparent)}
-  strong{font-weight:600;color:var(--ink)}
-  .lede{font-size:1.15rem;color:var(--ink-2);max-width:38rem}
-  .eyebrow{font-family:var(--sans);font-size:.72rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 1.1em}
-  .mono{font-family:var(--mono)}
+  /* ---------- nav ---------- */
+  .topbar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--paper) 78%,transparent);
+    backdrop-filter:saturate(1.6) blur(14px);-webkit-backdrop-filter:saturate(1.6) blur(14px);border-bottom:1px solid transparent;transition:border-color .3s}
+  .topbar.scrolled{border-bottom-color:var(--rule-2)}
+  .bar{max-width:var(--maxw);margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:14px}
+  .brand{display:flex;align-items:center;gap:.5em;font-weight:650;font-size:1.08rem;letter-spacing:-.02em;color:var(--ink);text-decoration:none}
+  .brand svg{width:24px;height:24px;flex:none}
+  .links{margin-left:auto;display:flex;align-items:center;gap:2px}
+  .links a{color:var(--ink-2);text-decoration:none;font-size:.92rem;padding:.45em .75em;border-radius:8px;white-space:nowrap}
+  .links a:hover{color:var(--ink);background:var(--paper-2)}
+  .links a.cta{background:var(--ink);color:var(--paper);font-weight:600;margin-left:6px;padding:.5em 1em}
+  .links a.cta:hover{background:var(--ink);opacity:.88}
+  .tgl{display:grid;place-items:center;width:36px;height:36px;margin-left:6px;border-radius:10px;border:1px solid var(--rule);background:transparent;color:var(--ink-2);cursor:pointer;padding:0}
+  .tgl:hover{color:var(--ink);border-color:var(--ink-soft)}
+  .tgl svg{width:18px;height:18px}
+  .tgl .moon{display:none}
+  :root[data-theme="dark"] .tgl .sun{display:none}
+  :root[data-theme="dark"] .tgl .moon{display:block}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .tgl .sun{display:none}:root:not([data-theme="light"]) .tgl .moon{display:block}}
+  @media(max-width:820px){.links .hide-sm{display:none}}
+  @media(max-width:480px){.bar{padding:10px 16px;gap:8px}.links a.cta{padding:.5em .8em;font-size:.88rem}.links a{padding:.45em .5em}.cta .long{display:none}}
+
+  /* ---------- buttons, chips ---------- */
+  .btns{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  .btn{display:inline-flex;align-items:center;gap:.5em;font-weight:600;font-size:1rem;text-decoration:none;border-radius:12px;padding:.8em 1.3em;
+    border:1px solid var(--rule);color:var(--ink);background:var(--card);transition:transform .15s ease,box-shadow .2s ease,background .2s}
+  .btn:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+  .btn.primary{background:var(--accent-fill);border-color:var(--accent-fill);color:var(--on-accent);box-shadow:0 8px 24px -8px var(--glow-a)}
+  .btn.primary:hover{box-shadow:0 14px 34px -10px var(--accent-fill)}
+  .btn .ar{transition:transform .2s}
+  .btn:hover .ar{transform:translateX(3px)}
+  @media(max-width:480px){.hero .pill{font-size:.76rem}}
+  .pill{display:inline-flex;align-items:center;gap:.55em;font-size:.82rem;font-weight:500;color:var(--ink-2);background:var(--card);border:1px solid var(--rule);border-radius:999px;padding:.35em .9em .35em .45em}
+  .pill b{font-weight:600;color:var(--on-accent);background:var(--accent-fill);border-radius:999px;padding:.12em .6em;font-size:.76rem}
+  .chip{display:inline-flex;align-items:center;gap:.45em;font-family:var(--mono);font-size:.74rem;font-weight:500;padding:.25em .65em;border-radius:999px;white-space:nowrap}
+  .chip::before{content:"";width:.5em;height:.5em;border-radius:50%;background:currentColor}
+  .chip.ok{color:var(--repro);background:var(--repro-bg)}
+  .chip.bad{color:var(--altered);background:var(--altered-bg)}
+  .chip.warn{color:var(--stale);background:var(--stale-bg)}
+  .eyebrow{display:inline-block;font-size:.78rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:1rem}
+
+  /* ---------- sections ---------- */
+  section{padding:clamp(64px,8vw,104px) 0;position:relative}
+  /* off-screen sections skip style and layout until they come near */
+  main>section:not(.hero){content-visibility:auto;contain-intrinsic-size:auto 1100px}
+  @media print{main>section:not(.hero){content-visibility:visible}}
+  .head{max-width:46rem;margin-bottom:clamp(36px,5vw,56px)}
+  .head.center{margin-left:auto;margin-right:auto;text-align:center}
+  h2{font-size:clamp(2rem,4.6vw,3.4rem);line-height:1.04;margin-bottom:.45em}
+  h3{font-size:1.25rem;line-height:1.25;letter-spacing:-.015em}
+  .lede{font-size:clamp(1.08rem,1.6vw,1.25rem);color:var(--ink-2);line-height:1.55}
   .muted{color:var(--ink-soft)}
+  .small{font-size:.9rem}
+  .grid{display:grid;gap:18px}
+  @media(min-width:760px){.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(2,1fr)}}
+  @media(min-width:1040px){.g4{grid-template-columns:repeat(4,1fr)}}
+  .grid>*,.flow>*,.prob>*,.why>*,.split>*,.tdemo>*,.eng-grid>*,.start>*,.bound>*,.reps>*,.oss>*,.loop>*{min-width:0}
+  .card{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);padding:26px;box-shadow:0 1px 0 rgba(0,0,0,.02)}
+  .card h3{margin-bottom:.5em}
+  .card p{color:var(--ink-2);font-size:.97rem;margin:0}
+  .ic{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);margin-bottom:18px}
+  .ic svg{width:21px;height:21px}
 
-  /* ---------- badges (the product's own verdict language, used as a design device) ---------- */
-  .badge{display:inline-flex;align-items:center;gap:.4em;font-family:var(--mono);font-size:.7rem;font-weight:600;letter-spacing:.04em;
-    padding:.28em .6em;border-radius:999px;white-space:nowrap;vertical-align:middle}
-  .badge::before{content:"";width:.5em;height:.5em;border-radius:50%;background:currentColor;flex:none}
-  .b-repro{color:var(--repro);background:var(--repro-bg)}
-  .b-alt{color:var(--altered);background:var(--altered-bg)}
-  .b-stale{color:var(--stale);background:var(--stale-bg)}
+  /* reveal on scroll: only when JS runs and motion is welcome */
+  @media (prefers-reduced-motion:no-preference){
+    .js .rv{opacity:0;transform:translateY(22px);transition:opacity .8s cubic-bezier(.2,.7,.2,1),transform .8s cubic-bezier(.2,.7,.2,1)}
+    .js .rv.in{opacity:1;transform:none}
+    .js .rv.d1{transition-delay:.08s}.js .rv.d2{transition-delay:.16s}.js .rv.d3{transition-delay:.24s}
+  }
+
+  /* picture pairs: one per theme; the hidden one is lazy and never fetched */
+  .th-dark{display:none}
+  :root[data-theme="dark"] .th-light{display:none}
+  :root[data-theme="dark"] .th-dark{display:block}
+  @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .th-light{display:none}:root:not([data-theme="light"]) .th-dark{display:block}}
 
   /* ---------- hero ---------- */
-  .hero{padding-top:clamp(56px,9vw,104px);text-align:left}
-  .kicker{font-family:var(--sans);font-size:.74rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);display:flex;gap:.9em;align-items:center;margin-bottom:2.2em}
-  .kicker .dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
-  .hero h1{font-size:clamp(2rem,9vw,4.5rem);line-height:1;font-weight:600;letter-spacing:-.03em;margin-bottom:.32em}
-  .hero h1 em{font-style:normal;color:var(--accent)}
-  .hero .lede{font-size:clamp(1.15rem,2.3vw,1.4rem);max-width:33rem;color:var(--ink-2)}
-  .hero-meta{display:flex;flex-wrap:wrap;gap:.6em;margin-top:2em}
-  .chip{font-family:var(--mono);font-size:.74rem;color:var(--ink-2);border:1px solid var(--rule);border-radius:999px;padding:.4em .85em;background:var(--card)}
+  .hero{padding:clamp(36px,5vw,64px) 0 clamp(48px,7vw,88px);overflow:hidden;isolation:isolate}
+  .hero::before{content:"";position:absolute;inset:-20% -10% auto;height:120%;z-index:-1;pointer-events:none;
+    background:radial-gradient(40% 50% at 22% 20%,var(--glow-a),transparent 70%),radial-gradient(35% 40% at 85% 35%,var(--glow-b),transparent 70%)}
+  .hero::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;opacity:.5;
+    background-image:linear-gradient(var(--rule-2) 1px,transparent 1px),linear-gradient(90deg,var(--rule-2) 1px,transparent 1px);background-size:56px 56px;
+    -webkit-mask-image:radial-gradient(70% 60% at 50% 30%,#000,transparent 75%);mask-image:radial-gradient(70% 60% at 50% 30%,#000,transparent 75%)}
+  .hero-copy{max-width:64rem;margin:0 auto;text-align:center}
+  .hero h1{font-size:clamp(2.5rem,6.6vw,5.1rem);line-height:1;letter-spacing:-.045em;margin:1rem 0 1.1rem;font-weight:650}
+  .hero h1 .hl{background:linear-gradient(100deg,var(--accent-fill) 10%,#7b5cff 55%,var(--warm) 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero .lede{max-width:46rem;margin:0 auto 1.8rem;font-size:clamp(1.1rem,1.9vw,1.32rem)}
+  .hero .btns{justify-content:center}
+  .trust{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 22px;margin-top:1.3rem;font-size:.88rem;color:var(--ink-soft)}
+  .trust span{display:inline-flex;align-items:center;gap:.45em}
+  .trust svg{width:15px;height:15px;color:var(--mint)}
 
-  /* ---------- generic card ---------- */
-  .card{background:var(--card);border:1px solid var(--rule);border-radius:var(--r)}
-  .grid{display:grid;gap:18px}
-  @media(min-width:680px){.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}}
-
-  /* ---------- three-phase flow ---------- */
-  .flow{display:grid;gap:14px;margin-top:8px}
-  @media(min-width:760px){.flow{grid-template-columns:1fr auto 1fr auto 1fr;align-items:stretch}}
-  .phase{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);padding:22px}
-  .phase .n{font-family:var(--mono);font-size:.78rem;font-weight:600;color:var(--accent);letter-spacing:.05em}
-  .phase h3{margin:.5em 0 .35em}
-  .phase p{font-size:.92rem;margin:0;color:var(--ink-2)}
-  .phase .path{font-family:var(--mono);font-size:.74rem;color:var(--ink-soft);margin-top:.9em;display:block}
-  .freeze{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5em;color:var(--ink-soft);font-family:var(--mono);font-size:.64rem;letter-spacing:.05em;text-transform:uppercase;padding:6px}
-  .freeze .ar{font-size:1.3rem;color:var(--accent);line-height:1}
-  .freeze span{max-width:8ch;text-align:center;line-height:1.3}
-  @media(max-width:759px){.freeze{flex-direction:row}.freeze .ar{transform:rotate(90deg)}}
-
-  /* ---------- trace / tamper demo ---------- */
-  .receipt{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden}
-  .receipt-top{padding:22px 24px;border-bottom:1px dashed var(--rule)}
-  .kpi-label{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:.4em}
-  .kpi-row{display:flex;align-items:baseline;gap:.7em;flex-wrap:wrap}
-  .kpi-val{font-family:var(--serif);font-size:clamp(2.1rem,6vw,2.9rem);font-weight:500;letter-spacing:-.02em;line-height:1}
-  .kpi-val.tampered{color:var(--altered)}
-  .receipt-body{padding:18px 24px 22px;font-family:var(--mono);font-size:.79rem;color:var(--ink-2);line-height:1.85}
-  .receipt-body .k{color:var(--ink-soft)}
-  .receipt-body .hash{word-break:break-all}
-  .receipt-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
-  button{font-family:var(--mono);font-size:.78rem;font-weight:500;cursor:pointer;border-radius:8px;padding:.6em 1em;border:1px solid var(--rule);background:var(--paper-2);color:var(--ink);transition:transform .08s ease,background .15s ease}
-  button:hover{background:var(--rule-2)}
-  button:active{transform:translateY(1px)}
-  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-  button.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
-  button.primary:hover{opacity:.9}
-  .verdict{margin-top:16px;font-family:var(--mono);font-size:.82rem;padding:.7em .9em;border-radius:8px;border:1px solid transparent;line-height:1.5}
-  .verdict.ok{color:var(--repro);background:var(--repro-bg);border-color:color-mix(in srgb,var(--repro) 25%,transparent)}
-  .verdict.bad{color:var(--altered);background:var(--altered-bg);border-color:color-mix(in srgb,var(--altered) 30%,transparent)}
-
-  /* ---------- comparison ---------- */
-  .cmp{display:grid;gap:16px}
-  @media(min-width:720px){.cmp{grid-template-columns:1fr 1fr}}
-  .cmp-col{border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;background:var(--card)}
-  .cmp-h{padding:14px 18px;font-family:var(--mono);font-size:.76rem;font-weight:600;letter-spacing:.04em;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;gap:1em}
-  .cmp-col.bad .cmp-h{background:var(--stale-bg);color:var(--stale)}
-  .cmp-col.good .cmp-h{background:var(--repro-bg);color:var(--repro)}
-  .cmp-b{padding:18px}
-  .cmp-b pre{margin:0;font-family:var(--mono);font-size:.76rem;line-height:1.65;color:var(--ink-2);white-space:pre-wrap;word-break:break-word}
-  .cmp-b .note{font-size:.86rem;color:var(--ink-soft);margin:.9em 0 0}
-  .tok-c{color:var(--ink-soft)}
-
-  /* ---------- guardrails ---------- */
-  .guard{background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--altered);border-radius:var(--r);padding:20px 22px}
-  .guard .wrong{font-family:var(--mono);font-size:.82rem;color:var(--altered);margin-bottom:.5em}
-  .guard h3{font-size:1rem;margin-bottom:.35em}
-  .guard p{font-size:.9rem;margin:0;color:var(--ink-2)}
-
-  /* ---------- measure grid ---------- */
-  .mtable{width:100%;border-collapse:collapse;font-size:.9rem}
-  .mtable td{padding:.72em .3em;border-bottom:1px solid var(--rule-2);vertical-align:top}
-  .mtable tr:last-child td{border-bottom:0}
-  .mtable .m{font-family:var(--mono);font-size:.82rem;color:var(--ink);white-space:nowrap;padding-right:1.4em;font-weight:500}
-  .mtable .d{color:var(--ink-2)}
-  .scroll{overflow-x:auto}
-
-  /* ---------- value cards ---------- */
-  .val{padding:24px}
-  .val .ic{font-family:var(--mono);font-size:.72rem;font-weight:600;color:var(--accent);letter-spacing:.05em;margin-bottom:1em}
-  .val h3{margin-bottom:.4em}
-  .val p{font-size:.94rem;margin:0;color:var(--ink-2)}
-
-  /* ---------- pull / statement ---------- */
-  .statement{font-family:var(--serif);font-size:clamp(1.5rem,3.6vw,2.15rem);line-height:1.24;font-weight:400;letter-spacing:-.01em;max-width:24ch;color:var(--ink)}
-  .statement b{font-weight:600;color:var(--accent);font-style:normal}
-
-  footer{padding:44px 0 60px;color:var(--ink-soft);font-size:.86rem}
-  footer .rule{height:1px;background:var(--rule);margin-bottom:26px}
-  footer .mono{font-size:.76rem;line-height:1.9}
-
-  .rowlabel{font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 1.4em;display:flex;align-items:center;gap:1em}
-  .rowlabel::after{content:"";flex:1;height:1px;background:var(--rule)}
-
-  /* ---------- user walkthrough (stepper + terminal) ---------- */
-  .walk{margin-top:1.6em}
-  .steps{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
-  .step-btn{display:flex;align-items:center;gap:.55em;font-family:var(--mono);font-size:.76rem;font-weight:500;
-    padding:.5em .8em;border-radius:8px;border:1px solid var(--rule);background:var(--card);color:var(--ink-soft);cursor:pointer;transition:all .15s ease}
-  .step-btn .num{display:inline-flex;align-items:center;justify-content:center;width:1.5em;height:1.5em;border-radius:50%;
-    background:var(--rule-2);color:var(--ink-soft);font-size:.72rem;font-weight:600;flex:none}
-  .step-btn:hover{border-color:var(--ink-soft);color:var(--ink-2)}
-  .step-btn[aria-current="true"]{border-color:var(--accent);color:var(--ink);background:var(--card)}
-  .step-btn[aria-current="true"] .num{background:var(--accent);color:#fff}
-  :root[data-theme="dark"] .step-btn[aria-current="true"] .num{color:#0d1a12}
-  @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .step-btn[aria-current="true"] .num{color:#0d1a12}}
-
-  .step-panel{display:grid;gap:16px}
-  @media(min-width:820px){.step-panel{grid-template-columns:1.4fr 1fr;align-items:start}}
-  .step-panel[hidden]{display:none}
-
-  /* terminal — a component that commits to one dark look in both themes */
-  .term{background:#0e1830;border:1px solid #24344a;border-radius:12px;overflow:hidden;box-shadow:0 1px 0 rgba(0,0,0,.04)}
-  .term-bar{display:flex;align-items:center;gap:7px;padding:11px 14px;background:#14223c;border-bottom:1px solid #24344a}
-  .term-bar i{width:11px;height:11px;border-radius:50%;background:#3a4f68;display:block}
-  .term-bar i:first-child{background:#e05c4b}.term-bar i:nth-child(2){background:#d5a24e}.term-bar i:nth-child(3){background:#4ade80}
-  .term-bar span{margin-left:8px;font-family:var(--mono);font-size:.7rem;color:#6a83a8}
-  .term-body{padding:18px 18px 20px;font-family:var(--mono);font-size:.82rem;line-height:1.75;color:#d1ddf5;overflow-x:auto}
-  .term-body .cmd{color:#eaf1fb}
-  .term-body .cmd .p{color:#4ade80;user-select:none}
-  .term-body .cmt{color:#6a83a8}
-  .term-body .out{color:#93a7c4}
-  .term-body .ok{color:#4ade80}
-  .term-body .hl{color:#e6c07a}
-  .term-body .file{color:#9ec1f0}
-  .term-body b{color:#eaf1fb;font-weight:600}
-  .term-body .blank{display:block;height:.5em}
-  .step-note h3{font-size:1.05rem;margin-bottom:.4em}
-  .step-note p{font-size:.92rem;color:var(--ink-2);margin:0 0 .7em}
-  .step-note .tag{font-family:var(--mono);font-size:.7rem;color:var(--accent);letter-spacing:.05em;text-transform:uppercase;margin-bottom:.8em;display:block}
-  .walk-nav{display:flex;gap:10px;margin-top:18px}
-
-  /* ---------- marketing nav + CTAs ---------- */
-  .topbar{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--paper) 82%,transparent);
-    backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--rule-2)}
-  .topbar .bar{max-width:var(--maxw);margin:0 auto;padding:13px 24px;display:flex;align-items:center;gap:16px}
-  .brand{display:flex;align-items:center;gap:.55em;font-family:var(--serif);font-weight:600;font-size:1.12rem;letter-spacing:-.01em;color:var(--ink);text-decoration:none;border:0}
-  .brand svg{width:22px;height:22px;flex:none}
-  .nav-links{margin-left:auto;display:flex;align-items:center;gap:6px}
-  .nav-links a{white-space:nowrap;font-family:var(--sans);font-size:.9rem;color:var(--ink-2);text-decoration:none;border:0;padding:.45em .7em;border-radius:8px}
-  .nav-links a:hover{color:var(--ink);background:var(--rule-2)}
-  .nav-links a.cta{background:var(--ink);color:var(--paper);font-weight:600;padding:.5em 1em}
-  .nav-links a.cta:hover{opacity:.9;background:var(--ink)}
-  .nav-links .hide-sm{}
-  @media(max-width:640px){
-    .nav-links .hide-sm{display:none}
-    /* The bar must stay one line: the CTA was wrapping to three and pushing
-       the theme toggle off the edge once "Docs" joined it. */
-    .topbar .bar{padding:11px 16px;gap:10px}
-    .nav-links{gap:2px;flex-wrap:nowrap;min-width:0}
-    .nav-links a{padding:.45em .5em;font-size:.86rem;white-space:nowrap}
-    .nav-links a.cta{padding:.5em .75em}
-    .nav-links a.cta .cta-long{display:none}
+  .stage{position:relative;margin:clamp(40px,5vw,56px) auto 0;max-width:1120px;perspective:2000px}
+  .window{position:relative;border-radius:16px;overflow:hidden;background:var(--card);border:1px solid var(--rule);box-shadow:var(--shadow-lg)}
+  @media (prefers-reduced-motion:no-preference){
+    .js .window{transform:rotateX(9deg) scale(.97);transform-origin:50% 0;transition:transform 1.2s cubic-bezier(.2,.7,.2,1)}
+    .js .stage.in .window{transform:none}
   }
-  .tgl{font-family:var(--mono);font-size:.9rem;line-height:1;background:transparent;border:1px solid var(--rule);color:var(--ink-2);width:34px;height:32px;border-radius:8px;cursor:pointer;padding:0}
-  .tgl:hover{border-color:var(--ink-soft);color:var(--ink)}
+  .chrome{display:flex;align-items:center;gap:7px;padding:11px 14px;border-bottom:1px solid var(--rule-2);background:var(--paper-2)}
+  .chrome i{width:11px;height:11px;border-radius:50%;background:var(--rule)}
+  .chrome .addr{margin:0 auto;font-family:var(--mono);font-size:.74rem;color:var(--ink-soft);background:var(--card);border:1px solid var(--rule-2);border-radius:7px;padding:.2em 1.2em;max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .shotwrap{position:relative}
+  /* the fair-value KPI in the 1440x900 screenshot */
+  .ring{position:absolute;left:19.8%;top:25.6%;width:21.3%;height:17.8%;border-radius:14px;box-shadow:0 0 0 3px var(--warm);pointer-events:none}
+  @media (prefers-reduced-motion:no-preference){.ring::after{content:"";position:absolute;inset:-3px;border-radius:16px;box-shadow:0 0 0 3px var(--warm);animation:pulse 2.4s ease-out infinite}}
+  @keyframes pulse{0%{opacity:.9;transform:scale(1)}100%{opacity:0;transform:scale(1.12)}}
+  .tcard{position:absolute;right:-28px;bottom:-40px;width:min(410px,44%);background:color-mix(in srgb,var(--card) 88%,transparent);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    border:1px solid var(--rule);border-radius:16px;box-shadow:var(--shadow-lg);padding:18px 20px 16px;font-size:.86rem;text-align:left}
+  .tcard .t-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px}
+  .tcard .t-label{font-size:.76rem;color:var(--ink-soft);font-weight:500}
+  .tcard .t-val{font-size:1.7rem;font-weight:650;letter-spacing:-.03em;line-height:1}
+  .tl{list-style:none;margin:0;padding:0;position:relative}
+  .tl::before{content:"";position:absolute;left:9px;top:8px;bottom:8px;width:2px;background:var(--rule)}
+  .tl li{position:relative;padding:6px 0 6px 30px;line-height:1.35}
+  .tl li::before{content:"";position:absolute;left:3px;top:10px;width:14px;height:14px;border-radius:50%;background:var(--card);border:2px solid var(--rule)}
+  .tl li b{display:block;font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+  .tl li span{font-family:var(--mono);font-size:.76rem;color:var(--ink-2);word-break:break-word}
+  .tl li.on::before{border-color:var(--accent-fill);background:var(--accent-fill);box-shadow:0 0 0 4px var(--accent-soft)}
+  .tl li.on b{color:var(--accent)}
+  .tl li.last.on::before{border-color:var(--repro);background:var(--repro);box-shadow:0 0 0 4px var(--repro-bg)}
+  @media (prefers-reduced-motion:no-preference){
+    .js .tcard .tl li{opacity:.28;transition:opacity .45s}
+    .js .tcard .tl li.on,.js .tcard .tl li.done{opacity:1}
+  }
+  .tcard .t-foot{margin-top:8px;padding-top:10px;border-top:1px dashed var(--rule);font-size:.74rem;color:var(--ink-soft)}
+  @media(max-width:860px){
+    .tcard{position:relative;right:auto;bottom:auto;width:auto;margin:-26px 14px 0;}
+  }
+  .stage-cap{font-size:.86rem;color:var(--ink-soft);text-align:center;margin:clamp(56px,6vw,72px) auto 0;max-width:44rem}
+  @media(max-width:860px){.stage-cap{margin-top:22px}}
 
-  .cta-row{display:flex;flex-wrap:wrap;gap:12px;margin-top:2em}
-  a.btn{font-family:var(--sans);font-weight:600;font-size:.98rem;text-decoration:none;border:1px solid var(--ink);border-radius:10px;padding:.72em 1.3em;display:inline-flex;align-items:center;gap:.5em;transition:transform .08s ease}
-  a.btn:hover{transform:translateY(-1px)}
-  a.btn.solid{background:var(--ink);color:var(--paper)}
-  a.btn.ghost{background:transparent;color:var(--ink);border-color:var(--rule-strong,var(--rule))}
-  footer .flinks{display:flex;flex-wrap:wrap;gap:20px;margin-bottom:26px;font-size:.92rem}
-  footer .flinks a{color:var(--ink-2);text-decoration:none;border:0}
-  footer .flinks a:hover{color:var(--ink)}
+  /* ---------- problem ---------- */
+  .prob{display:grid;gap:18px}
+  @media(min-width:860px){.prob{grid-template-columns:repeat(3,1fr)}}
+  .prob .card{padding:28px}
+  .prob .q{font-size:1.05rem;color:var(--ink);font-weight:500;line-height:1.45;margin:0 0 1rem}
+  .prob .tag{font-size:.74rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--warm);margin-bottom:14px;display:block}
+  :root[data-theme="light"] .prob .tag{color:#b84300}
+  @media (prefers-color-scheme:light){:root:not([data-theme="dark"]) .prob .tag{color:#b84300}}
 
-  /* ---------- hero visual ---------- */
-  .shot{display:block;margin-top:clamp(36px,6vw,56px);border:1px solid var(--rule);border-radius:14px;overflow:hidden;background:var(--card);
-    box-shadow:0 1px 2px rgba(9,26,85,.06),0 24px 48px -24px rgba(9,26,85,.35)}
-  .shot img{display:block;width:100%;height:auto}
-  .shot-cap{font-size:.86rem;color:var(--ink-soft);margin-top:.9em;max-width:none}
+  /* ---------- statement ---------- */
+  .statement{font-size:clamp(1.7rem,4vw,3rem);line-height:1.14;letter-spacing:-.035em;font-weight:600;max-width:24ch;margin:0 auto;text-align:center;text-wrap:balance}
+  .statement em{font-style:normal;color:var(--accent)}
+  .statement-sub{max-width:40rem;margin:1.6rem auto 0;text-align:center}
 
-  /* ---------- ask / build / schedule ---------- */
-  .path3 .val .ic{font-size:.8rem}
-  .path3 .val .today{font-family:var(--mono);font-size:.72rem;color:var(--ink-soft);margin-top:1em;display:block;line-height:1.6}
-  .path-flow{font-family:var(--mono);font-size:.78rem;color:var(--ink-soft);margin:1.4em 0 0;max-width:none}
+  /* ---------- three steps ---------- */
+  .flow{display:grid;gap:18px;counter-reset:s}
+  @media(min-width:900px){.flow{grid-template-columns:repeat(3,1fr)}}
+  .stepc{position:relative;padding:30px 28px 26px;overflow:hidden}
+  .stepc .n{font-size:3.4rem;font-weight:650;letter-spacing:-.05em;line-height:1;color:transparent;-webkit-text-stroke:1.5px var(--accent-fill);margin-bottom:22px;display:block}
+  .stepc h3{font-size:1.4rem;margin-bottom:.45em}
+  .stepc p{font-size:1rem}
+  .viz{height:118px;margin:-6px -6px 18px;border-radius:10px;background:var(--paper-2);border:1px solid var(--rule-2);position:relative;overflow:hidden}
+  details.eng{margin-top:18px;border-top:1px solid var(--rule-2);padding-top:12px}
+  details.eng summary{cursor:pointer;font-size:.86rem;font-weight:600;color:var(--accent);list-style:none;display:flex;align-items:center;gap:.4em}
+  details.eng summary::-webkit-details-marker{display:none}
+  details.eng summary::before{content:"+";font-family:var(--mono);width:1.1em}
+  details.eng[open] summary::before{content:"\2212"}
+  details.eng .body{font-size:.88rem;color:var(--ink-2);margin-top:10px}
+  details.eng pre{margin:10px 0 0;background:var(--paper-2);border:1px solid var(--rule-2);border-radius:8px;padding:10px 12px;font-family:var(--mono);font-size:.74rem;line-height:1.6;overflow-x:auto;color:var(--ink-2)}
+  /* step visuals */
+  .v-rows{position:absolute;inset:16px 18px;display:grid;grid-template-columns:1fr 26px 1fr;align-items:center;gap:8px}
+  .v-col{display:flex;flex-direction:column;gap:6px}
+  .v-col i{display:block;height:9px;border-radius:4px;background:var(--rule)}
+  .v-col.messy i:nth-child(2){width:70%;background:var(--warm);opacity:.55}.v-col.messy i:nth-child(4){width:45%}
+  .v-col.clean i{background:var(--accent-fill);opacity:.75}
+  .v-arrow{color:var(--ink-soft);text-align:center;font-size:1.1rem}
+  .v-check{position:absolute;right:14px;bottom:10px;font-family:var(--mono);font-size:.68rem}
+  .v-def{position:absolute;inset:18px;display:flex;flex-direction:column;justify-content:center;gap:10px;font-family:var(--mono);font-size:.78rem;color:var(--ink-2)}
+  .v-def div{display:flex;gap:8px;align-items:center}
+  .v-def b{color:var(--accent);font-weight:600}
+  .v-def .k{background:var(--card);border:1px solid var(--rule);border-radius:6px;padding:.15em .5em}
+  .v-rep{position:absolute;inset:16px 18px;display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
+  .v-kpi{background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:8px 10px;font-weight:650;letter-spacing:-.03em;font-size:1.15rem;position:relative}
+  .v-kpi small{display:block;font-size:.62rem;font-weight:500;color:var(--ink-soft);letter-spacing:0}
+  .v-bars{display:flex;flex-direction:column;justify-content:center;gap:6px}
+  .v-bars i{display:block;height:10px;border-radius:3px;background:var(--accent-fill)}
+  .v-pop{position:absolute;left:30%;top:58%;font-family:var(--mono);font-size:.62rem;background:var(--ink);color:var(--paper);padding:.25em .55em;border-radius:6px;white-space:nowrap}
+  @media (prefers-reduced-motion:no-preference){
+    .in .v-col.clean i{animation:grow 1.4s cubic-bezier(.2,.7,.2,1) both}
+    .in .v-col.clean i:nth-child(2){animation-delay:.12s}.in .v-col.clean i:nth-child(3){animation-delay:.24s}.in .v-col.clean i:nth-child(4){animation-delay:.36s}
+    .in .v-bars i{animation:grow 1.2s cubic-bezier(.2,.7,.2,1) both}
+    .in .v-bars i:nth-child(2){animation-delay:.1s}.in .v-bars i:nth-child(3){animation-delay:.2s}
+    .in .v-pop{animation:pop .5s .9s both}
+  }
+  @keyframes grow{from{transform:scaleX(0);transform-origin:left}to{transform:scaleX(1);transform-origin:left}}
+  @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 
-  /* ---------- open source / cloud ---------- */
-  .plan{padding:24px}
-  .plan h3{margin-bottom:.5em}
-  .plan ul{margin:0;padding-left:1.1em;color:var(--ink-2);font-size:.94rem;line-height:1.7}
-  .plan .ic{font-family:var(--mono);font-size:.72rem;font-weight:600;color:var(--accent);letter-spacing:.05em;margin-bottom:1em}
+  /* ---------- benefits ---------- */
+  .why{display:grid;gap:18px}
+  @media(min-width:860px){.why{grid-template-columns:repeat(3,1fr)}}
+  .why .card{padding:30px}
+  .why .big{font-size:1.5rem;font-weight:600;letter-spacing:-.025em;line-height:1.2;margin-bottom:.6em}
 
-  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+  .who{display:grid;gap:18px}
+  @media(min-width:700px){.who{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(min-width:1040px){.who{grid-template-columns:repeat(4,minmax(0,1fr))}}
+  .who .card{padding:24px}
+  .who h3{font-size:1.06rem}
+  .who .role{font-size:.74rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);display:block;margin-bottom:10px}
+
+  /* ---------- trace demo ---------- */
+  .tsec{background:linear-gradient(180deg,transparent,var(--paper-2) 18%,var(--paper-2) 82%,transparent)}
+  .tdemo{display:grid;gap:24px;align-items:start}
+  @media(min-width:960px){.tdemo{grid-template-columns:.9fr 1.1fr;gap:40px}}
+  .tk{position:sticky;top:96px;background:var(--card);border:1px solid var(--rule);border-radius:18px;padding:28px;box-shadow:var(--shadow)}
+  @media(max-width:959px){.tk{position:relative;top:auto}}
+  .tk .lab{font-size:.84rem;color:var(--ink-soft);display:flex;justify-content:space-between;gap:10px;align-items:center}
+  .tk .val{font-size:clamp(3rem,7vw,4.4rem);font-weight:650;letter-spacing:-.05em;line-height:1;margin:.25em 0 .2em;transition:color .3s}
+  .tk .val.altered{color:var(--altered)}
+  .tk .meta{font-size:.86rem;color:var(--ink-soft)}
+  .tk .ctrl{display:flex;flex-wrap:wrap;gap:8px;margin-top:22px}
+  .tk button{font:inherit;font-size:.86rem;font-weight:600;cursor:pointer;border-radius:10px;padding:.6em 1em;border:1px solid var(--rule);background:var(--paper-2);color:var(--ink)}
+  .tk button:hover{border-color:var(--ink-soft)}
+  .tk button.go{background:var(--accent-fill);border-color:var(--accent-fill);color:var(--on-accent)}
+  .tk button[disabled]{opacity:.45;cursor:default}
+  .verdict{margin-top:16px;font-family:var(--mono);font-size:.8rem;padding:.75em .95em;border-radius:10px;line-height:1.5}
+  .verdict.ok{color:var(--repro);background:var(--repro-bg)}
+  .verdict.bad{color:var(--altered);background:var(--altered-bg)}
+  .steps5{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:t}
+  .steps5 li{counter-increment:t;position:relative;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:18px 20px 18px 64px;transition:border-color .4s,box-shadow .4s,opacity .4s}
+  .steps5 li::before{content:counter(t);position:absolute;left:18px;top:17px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:600;font-size:.86rem;
+    background:var(--paper-2);color:var(--ink-soft);border:1px solid var(--rule);transition:all .4s}
+  .steps5 li::after{content:"";position:absolute;left:32px;top:50px;bottom:-14px;width:2px;background:var(--rule)}
+  .steps5 li:last-child::after{display:none}
+  .steps5 h3{font-size:1.06rem;margin-bottom:.25em}
+  .steps5 p{margin:0;font-size:.94rem;color:var(--ink-2)}
+  .steps5 .fact{display:block;margin-top:.6em;font-family:var(--mono);font-size:.76rem;color:var(--ink-soft);word-break:break-word}
+  .js .steps5.playing li{opacity:.5}
+  .js .steps5 li.on{opacity:1;border-color:var(--accent-fill);box-shadow:0 0 0 4px var(--accent-soft)}
+  .js .steps5 li.done{opacity:1}
+  .steps5 li.on::before,.steps5 li.done::before{background:var(--accent-fill);color:var(--on-accent);border-color:var(--accent-fill)}
+  .steps5 li.last.on::before,.steps5 li.last.done::before{background:var(--repro);border-color:var(--repro);color:var(--card)}
+  .steps5 li.last.fail::before{background:var(--altered);border-color:var(--altered);color:var(--card)}
+  .steps5 li.last.fail{border-color:var(--altered);box-shadow:0 0 0 4px var(--altered-bg)}
+  .honest{margin-top:20px;font-size:.86rem;color:var(--ink-soft);border-left:3px solid var(--rule);padding-left:14px}
+
+  /* ---------- media frames ---------- */
+  .frame{border-radius:14px;overflow:hidden;border:1px solid var(--rule);background:var(--card);box-shadow:var(--shadow-lg)}
+  figure{margin:0}
+  figcaption{font-size:.88rem;color:var(--ink-soft);margin-top:14px;max-width:48rem}
+  .split{display:grid;gap:28px;align-items:center}
+  @media(min-width:960px){.split{grid-template-columns:1fr 1.25fr;gap:56px}.split.rev{grid-template-columns:1.25fr 1fr}.split.rev>:first-child{order:2}}
+  .ticks{list-style:none;margin:1.4rem 0 0;padding:0;display:grid;gap:12px}
+  .ticks li{position:relative;padding-left:30px;color:var(--ink-2)}
+  .ticks li::before{content:"";position:absolute;left:0;top:.3em;width:18px;height:18px;border-radius:50%;background:var(--accent-soft)}
+  .ticks li::after{content:"";position:absolute;left:6px;top:.55em;width:6px;height:9px;border:solid var(--accent);border-width:0 2px 2px 0;transform:rotate(45deg)}
+  .ticks b{color:var(--ink);font-weight:600}
+
+  /* before / after filter */
+  .ba{position:relative}
+  .ba-tabs{display:inline-flex;background:var(--paper-2);border:1px solid var(--rule);border-radius:12px;padding:4px;margin-bottom:14px}
+  .ba-tabs button{font:inherit;font-size:.86rem;font-weight:600;border:0;background:transparent;color:var(--ink-soft);padding:.5em 1em;border-radius:9px;cursor:pointer}
+  .ba-tabs button[aria-selected="true"]{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+  .ba-view{position:relative}
+  .ba-view .pane{transition:opacity .5s}
+  .ba-view .pane+.pane{position:absolute;inset:0}
+  .ba-view .pane[hidden]{display:block;opacity:0;pointer-events:none;visibility:hidden}
+  .live{margin-top:18px}
+  .live-btn{font:inherit;font-weight:600;font-size:.95rem;cursor:pointer;border:1px dashed var(--accent-fill);color:var(--accent);background:var(--accent-soft);border-radius:12px;padding:.85em 1.2em;width:100%}
+  .live iframe{width:100%;height:min(80vh,820px);border:0;display:block;background:#fff}
+
+  .reps{display:grid;gap:18px;margin-top:clamp(40px,6vw,64px)}
+  @media(min-width:860px){.reps{grid-template-columns:repeat(3,1fr)}}
+  .rep{display:flex;flex-direction:column;text-decoration:none;color:inherit;background:var(--card);border:1px solid var(--rule);border-radius:16px;overflow:hidden;transition:transform .2s,box-shadow .2s}
+  .rep:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg)}
+  .rep .thumb{aspect-ratio:16/10;overflow:hidden;border-bottom:1px solid var(--rule-2);background:var(--paper-2)}
+  .rep .thumb img{width:100%;height:100%;object-fit:cover;object-position:top}
+  .rep .rb{padding:18px 20px 20px}
+  .rep h3{font-size:1.06rem;margin-bottom:.3em;color:var(--ink)}
+  .rep p{font-size:.9rem;color:var(--ink-2);margin:0 0 .8em}
+  .rep .kind{font-size:.74rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+  .rep .open{font-size:.88rem;font-weight:600;color:var(--accent)}
+  .dl{font-size:.86rem;margin-top:14px;color:var(--ink-soft)}
+
+  /* agents */
+  .loop{display:grid;gap:12px;margin:0 0 clamp(36px,5vw,52px);padding:0;list-style:none;counter-reset:a}
+  @media(min-width:860px){.loop{grid-template-columns:repeat(4,1fr)}}
+  .loop li{counter-increment:a;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:20px 20px 18px;position:relative}
+  .loop li::before{content:"0" counter(a);font-family:var(--mono);font-size:.74rem;color:var(--accent);font-weight:600;display:block;margin-bottom:10px}
+  .loop h3{font-size:1.04rem;margin-bottom:.35em}
+  .loop p{font-size:.9rem;color:var(--ink-2);margin:0}
+  @media(min-width:860px){.loop li:not(:last-child)::after{content:"";position:absolute;right:-12px;top:50%;width:12px;height:2px;background:var(--accent-fill);opacity:.5}}
+  .hosts{display:flex;flex-wrap:wrap;gap:8px;margin-top:1.2rem}
+  .hosts span{font-size:.84rem;border:1px solid var(--rule);border-radius:999px;padding:.3em .85em;background:var(--card);color:var(--ink-2)}
+
+  /* print */
+  .paper{position:relative;height:clamp(380px,48vw,560px)}
+  .paper .sheet{position:absolute;width:56%;border-radius:6px;overflow:hidden;background:#fff;border:1px solid var(--rule);box-shadow:var(--shadow-lg)}
+  .paper .s1{left:2%;top:9%;transform:rotate(-5deg)}
+  .paper .s2{right:2%;top:0;transform:rotate(3deg)}
+  @media (prefers-reduced-motion:no-preference){.js .paper .sheet{transition:transform 1.1s cubic-bezier(.2,.7,.2,1)}.js .paper:not(.in) .s1{transform:rotate(0) translateX(18%)}.js .paper:not(.in) .s2{transform:rotate(0) translateX(-18%)}}
+
+  /* teams */
+  .feat{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:16px;overflow:hidden}
+  @media(min-width:700px){.feat{grid-template-columns:repeat(2,1fr)}}
+  @media(min-width:1040px){.feat{grid-template-columns:repeat(3,1fr)}}
+  .feat>div{background:var(--card);padding:26px}
+  .feat h3{font-size:1.06rem;margin-bottom:.4em;display:flex;align-items:center;gap:.6em}
+  .feat h3 svg{width:19px;height:19px;color:var(--accent);flex:none}
+  .feat p{font-size:.93rem;color:var(--ink-2);margin:0}
+
+  /* open source */
+  .oss{display:grid;gap:28px;align-items:center;background:#0e0e13;color:#f2f2f0;border:1px solid #23232c;border-radius:24px;padding:clamp(32px,5vw,64px);position:relative;overflow:hidden;isolation:isolate}
+  .oss::before{content:"";position:absolute;inset:0;z-index:-1;background:radial-gradient(50% 70% at 90% 10%,rgba(92,116,255,.45),transparent 70%),radial-gradient(40% 60% at 0% 100%,rgba(255,107,43,.25),transparent 70%)}
+  @media(min-width:960px){.oss{grid-template-columns:1.1fr 1fr}}
+  .oss h2{color:inherit}
+  .oss p,.oss ul{color:#c9c9d1}
+  .oss .eyebrow{color:#b9c3ff}
+  .oss .logos span{font-family:var(--mono);font-size:.82rem;border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:.5em .9em;background:rgba(255,255,255,.05)}
+  .logos{display:flex;flex-wrap:wrap;gap:10px}
+  .oss ul{margin:1.2rem 0 0;padding-left:1.1em}
+  .oss li{margin:.3em 0}
+  .oss .btn{background:transparent;color:#f2f2f0;border-color:rgba(255,255,255,.3)}
+  .oss :focus-visible{outline-color:#b9c3ff}
+
+  /* engineers */
+  .term{background:#0d0d10;border:1px solid #26262c;border-radius:14px;overflow:hidden;color:#d6d6dc;box-shadow:var(--shadow-lg)}
+  .term .tb{display:flex;gap:7px;align-items:center;padding:11px 14px;border-bottom:1px solid #26262c;background:#141418}
+  .term .tb i{width:11px;height:11px;border-radius:50%;background:#34343c}
+  .term .tb span{margin-left:8px;font-family:var(--mono);font-size:.72rem;color:#8a8a94}
+  .term pre{margin:0;padding:18px 20px;font-family:var(--mono);font-size:.8rem;line-height:1.75;overflow-x:auto}
+  .term .p{color:#7d90ff;user-select:none}.term .c{color:#8a8a94}.term .ok{color:#4ade80}.term .w{color:#f0b85a}.term b{color:#fff;font-weight:600}
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .tabs button{font:inherit;font-size:.86rem;font-weight:600;padding:.5em .95em;border-radius:10px;border:1px solid var(--rule);background:var(--card);color:var(--ink-2);cursor:pointer}
+  .tabs button[aria-selected="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  .eng-grid{display:grid;gap:28px}
+  @media(min-width:960px){.eng-grid{grid-template-columns:1fr 1.2fr;gap:48px}}
+  .tree{font-family:var(--mono);font-size:.84rem;line-height:1.8;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:18px 20px;margin:0;overflow-x:auto;color:var(--ink-2)}
+  .tree b{color:var(--accent);font-weight:600}
+  .doclinks{display:grid;gap:8px;margin-top:22px}
+  @media(min-width:600px){.doclinks{grid-template-columns:1fr 1fr}}
+  .doclinks a{display:flex;justify-content:space-between;gap:10px;text-decoration:none;color:var(--ink);background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:.7em 1em;font-size:.92rem}
+  .doclinks a:hover{border-color:var(--accent-fill)}
+  .doclinks a span{color:var(--accent)}
+  .bound{margin-top:clamp(36px,5vw,56px);display:grid;gap:18px}
+  @media(min-width:860px){.bound{grid-template-columns:1fr 1fr}}
+  .bound .card h3{font-size:1.04rem}
+  .bound ul{margin:.6em 0 0;padding-left:1.1em;color:var(--ink-2);font-size:.94rem}
+  .bound li{margin:.35em 0}
+
+  /* faq */
+  .faq{max-width:52rem;margin:0 auto}
+  .faq details{border-bottom:1px solid var(--rule)}
+  .faq summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;gap:16px;padding:22px 0;font-size:1.12rem;font-weight:600;letter-spacing:-.01em}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::after{content:"+";font-weight:400;font-size:1.5rem;line-height:1;color:var(--accent);transition:transform .25s}
+  .faq details[open] summary::after{transform:rotate(45deg)}
+  .faq .a{padding:0 0 22px;color:var(--ink-2);max-width:44rem}
+
+  /* start */
+  .start{display:grid;gap:18px}
+  @media(min-width:860px){.start{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
+  .start .card{padding:clamp(26px,4vw,40px);display:flex;flex-direction:column;gap:14px}
+  .start h3{font-size:1.5rem}
+  .start .card p{font-size:1rem}
+  .cmd{display:flex;align-items:center;gap:10px;background:var(--paper-2);border:1px solid var(--rule);border-radius:10px;padding:.7em .8em .7em 1em;font-family:var(--mono);font-size:.8rem;color:var(--ink);overflow:hidden}
+  .cmd code{flex:1;overflow-x:auto;white-space:nowrap;font-size:inherit}
+  .cmd button{font:inherit;font-family:var(--sans);font-size:.78rem;font-weight:600;border:1px solid var(--rule);background:var(--card);color:var(--ink-2);border-radius:8px;padding:.35em .7em;cursor:pointer;flex:none}
+
+  footer{padding:56px 0 64px;border-top:1px solid var(--rule-2);color:var(--ink-soft);font-size:.9rem}
+  .fgrid{display:flex;flex-wrap:wrap;gap:28px;justify-content:space-between;align-items:flex-start}
+  .fgrid nav{display:flex;flex-wrap:wrap;gap:6px 22px}
+  .fgrid nav a{color:var(--ink-2);text-decoration:none}
+  .fgrid nav a:hover{color:var(--ink)}
+  .fine{margin-top:28px;font-size:.84rem;max-width:56rem}
+
+  /* theme switch: a short cross-fade when the browser has no view transitions */
+  html.tswitch,html.tswitch *{transition:background-color .35s ease,color .35s ease,border-color .35s ease!important}
+  ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    *,*::before,*::after{animation:none!important;transition:none!important}
+  }
 </style>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
-<nav class="topbar">
+<header class="topbar" id="topbar">
   <div class="bar">
-    <a class="brand" href="#top" aria-label="TraceBi home">
-      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#2f5bea"/><g transform="translate(3 3) scale(1.3)" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"><circle cx="4" cy="15.5" r="2"/><path d="M5.85 14.73 L8.15 13.77 M11.1 11.3 L13.9 6.95"/><circle cx="10" cy="13" r="2"/><circle cx="15.5" cy="4.5" r="2.9" fill="#fff" stroke="none"/></g></svg>
+    <a class="brand" href="#top" aria-label="TraceBi, back to top">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#1f3fff"/><g transform="translate(3 3) scale(1.3)" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"><circle cx="4" cy="15.5" r="2"/><path d="M5.85 14.73 L8.15 13.77 M11.1 11.3 L13.9 6.95"/><circle cx="10" cy="13" r="2"/><circle cx="15.5" cy="4.5" r="2.9" fill="#fff" stroke="none"/></g></svg>
       TraceBi
     </a>
-    <div class="nav-links">
-      <a class="hide-sm" href="#paths">Product</a>
-      <a class="hide-sm" href="#workflow">How it works</a>
-      <a class="hide-sm" href="#layer">Semantic layer</a>
+    <nav class="links" aria-label="Main">
+      <a class="hide-sm" href="#how">How it works</a>
+      <a class="hide-sm" href="#trace">Trace a number</a>
+      <a class="hide-sm" href="#agents">AI agents</a>
+      <a class="hide-sm" href="#engineers">For engineers</a>
       <a href="/docs/">Docs</a>
-      <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
-      <a class="cta" href="/app"><span class="cta-long">Try the </span>demo →</a>
-      <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+      <a class="hide-sm" href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+      <a class="cta" href="/app">Live demo<span class="long"> &rarr;</span></a>
+    </nav>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Switch between light and dark">
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>
+      <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.6A8.5 8.5 0 0 1 9.4 3.5a8.5 8.5 0 1 0 11.1 11.1Z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ============ HERO ============ -->
+<section class="hero" id="top">
+  <div class="wrap">
+    <div class="hero-copy">
+      <span class="pill"><b>New</b> The workbench opens inside your AI chat</span>
+      <h1>Reports where every number <span class="hl">shows its work.</span></h1>
+      <p class="lede">TraceBi is open-source reporting for teams and their AI agents. Click any figure in a TraceBi report and see the data it came from, the definition behind it, and a check anyone can re-run to confirm it still comes out the same.</p>
+      <div class="btns">
+        <a class="btn primary" href="/app">Open the live demo <span class="ar" aria-hidden="true">&rarr;</span></a>
+        <a class="btn" href="/docs/start/quickstart.html">Get started in five minutes</a>
+      </div>
+      <div class="trust">
+        <span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>Free and open source (MIT)</span>
+        <span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>Runs on your own servers</span>
+        <span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>Works with Claude, ChatGPT and other agents</span>
+      </div>
+    </div>
+
+    <div class="stage rv" id="stage">
+      <div class="window">
+        <div class="chrome" aria-hidden="true"><i></i><i></i><i></i><span class="addr">portfolio_showcase.html</span></div>
+        <div class="shotwrap">
+          <picture class="th-light">
+            <source type="image/avif" srcset="/assets/shots/showcase-light-800.avif 800w, /assets/shots/showcase-light-1600.avif 1600w" sizes="(min-width:1180px) 1120px, 100vw">
+            <source type="image/webp" srcset="/assets/shots/showcase-light-800.webp 800w, /assets/shots/showcase-light-1600.webp 1600w" sizes="(min-width:1180px) 1120px, 100vw">
+            <img src="/assets/shots/showcase-light.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt="A TraceBi report, the sample portfolio showcase: a headline saying Consumer is the largest sector at 26.3% of the book, five figures led by fair value of $285.9M, a bar chart of fair value by sector and a donut by fund, with filters for sector, fund and rating in the sidebar.">
+          </picture>
+          <picture class="th-dark">
+            <source type="image/avif" srcset="/assets/shots/showcase-dark-800.avif 800w, /assets/shots/showcase-dark-1600.avif 1600w" sizes="(min-width:1180px) 1120px, 100vw">
+            <source type="image/webp" srcset="/assets/shots/showcase-dark-800.webp 800w, /assets/shots/showcase-dark-1600.webp 1600w" sizes="(min-width:1180px) 1120px, 100vw">
+            <img src="/assets/shots/showcase-dark.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt="A TraceBi report, the sample portfolio showcase, in its dark look: a headline saying Consumer is the largest sector at 26.3% of the book, five figures led by fair value of $285.9M, a bar chart of fair value by sector and a donut by fund.">
+          </picture>
+          <span class="ring" aria-hidden="true"></span>
+        </div>
+      </div>
+      <div class="tcard" aria-label="The trace of the fair value figure">
+        <div class="t-top"><span class="t-label">Fair value: where it came from</span><span class="t-val">$285.9M</span></div>
+        <ol class="tl" id="heroTrace">
+          <li><b>Source</b><span>inputs/holdings.csv + the CRM's issuer ratings</span></li>
+          <li><b>Clean table</b><span>fact_holdings · 25 rows · 5 checks passed</span></li>
+          <li><b>Definition</b><span>fair_value = sum of fair value</span></li>
+          <li><b>Query</b><span>portfolio_model · DuckDB 1.5.6</span></li>
+          <li class="last"><b>Re-run</b><span>fingerprint f1abefad… · same result</span></li>
+        </ol>
+        <div class="t-foot">The sample report's real trace, recorded when it was built.</div>
+      </div>
+    </div>
+    <p class="stage-cap">A real TraceBi report, built from the sample data that ships with it. <a href="/sample/portfolio_showcase.html">Open the file itself</a>: it is one HTML page that works offline, filters and all.</p>
+  </div>
+</section>
+
+<!-- ============ PROBLEM ============ -->
+<section id="problem">
+  <div class="wrap">
+    <div class="head rv">
+      <span class="eyebrow">The problem</span>
+      <h2>Everyone has a number nobody can explain.</h2>
+      <p class="lede">Making a report has never been easier. Believing one is the hard part, and AI just made the gap wider.</p>
+    </div>
+    <div class="prob">
+      <div class="card rv"><span class="tag">The board deck</span><p class="q">“Why does the deck say $4.1M when the dashboard says $3.9M?”</p><p>Two hours later someone finds a filter left on in a spreadsheet tab. Nobody wrote down how either number was made.</p></div>
+      <div class="card rv d1"><span class="tag">The AI answer</span><p class="q">“Total revenue last quarter was $12.4M, up 8%.”</p><p>It reads well and it was instant. But nobody can see what it added up, so nobody can check it, and the next time it might say something else.</p></div>
+      <div class="card rv d2"><span class="tag">The sign-off</span><p class="q">“Can you double-check these before Monday?”</p><p>Checking means doing the work again, because the work lives in someone’s head, a notebook, or a tool you can’t read.</p></div>
     </div>
   </div>
-</nav>
+</section>
 
-<div class="wrap" id="top">
+<!-- ============ WHAT IT IS ============ -->
+<section id="what" style="padding-top:0">
+  <div class="wrap rv">
+    <p class="statement">TraceBi writes down <em>how every number was made</em>, so anyone can check it and nobody has to take it on faith.</p>
+    <p class="lede statement-sub">Your data, the meaning of each number, and the report itself live as plain files your team can read and review. Every figure on the page is calculated from those definitions and carries its trace, right down to a fingerprint of the result.</p>
+  </div>
+</section>
 
-  <!-- HERO -->
-  <header class="hero">
-    <div class="kicker"><span class="dot"></span> TraceBi &nbsp;·&nbsp; the report framework for AI agents</div>
-    <h1>Every report your team needs.<br><em>Ask it, build it, or schedule it.</em></h1>
-    <p class="lede">Ask a question and get an answer in seconds. Build a one-off analysis your way, with an agent doing the heavy lifting. Schedule the reports worth repeating, and they refresh and arrive on their own. All from <strong>one set of approved definitions</strong>, and every number can be re-run to check it.</p>
-    <div class="cta-row">
-      <a class="btn solid" href="/app">See a live report →</a>
-      <a class="btn ghost" href="/sample/portfolio_showcase.html" download>Download a sample report</a>
-      <a class="btn ghost" href="https://github.com/saltyscott0521/tracebi">View on GitHub</a>
+<!-- ============ HOW IT WORKS ============ -->
+<section id="how">
+  <div class="wrap">
+    <div class="head rv">
+      <span class="eyebrow">How it works</span>
+      <h2>Three steps, from messy data to a report you can check.</h2>
+      <p class="lede">Each step is its own stage, so changing a chart never re-runs the slow cleanup, and the meaning of a number never quietly drifts between reports.</p>
     </div>
-    <p class="shot-cap" style="max-width:44rem">The demo serves the reference project: four models, from a direct lending portfolio (a CSV plus a live Postgres CRM) to wealth management and SaaS billing (SQLite databases that ship with it) and housing affordability (public data). Read the reports, ask a model a question, and follow every number on the Data board from source to report.</p>
-    <div class="hero-meta">
-      <span class="chip">Open source (MIT)</span>
-      <span class="chip">Works with Claude, Cursor &amp; any MCP agent</span>
-      <span class="chip">Reads from your warehouse</span>
-      <span class="chip">No data leaves your environment</span>
-    </div>
-    <a class="shot" href="/sample/portfolio_showcase.html" aria-label="Open the sample report">
-      <img src="/assets/showcase.jpg" width="1440" height="900" alt="The sample portfolio report: a headline, four KPI cards, fair value by sector as bars and by fund as a donut, each bound figure a live query">
-    </a>
-    <p class="shot-cap">A real report built with TraceBi, on the sample data that ships with it. One HTML file, about 0.7 MB, with 23 figures: 21 re-run from their queries, one computed in Python and marked so, and one typed-in number marked as unverified. Its manifest is <a href="/sample/portfolio_showcase.html.manifest.json" download>here</a>: save both and run <span class="mono">tracebi verify --file portfolio_showcase.html</span>.</p>
-  </header>
-
-  <!-- ASK / BUILD / SCHEDULE -->
-  <section id="paths">
-    <p class="eyebrow">Three ways to use it · one set of definitions</p>
-    <h2>Ask it, build it,<br>schedule it.</h2>
-    <p>Revenue means the same thing in a quick answer as it does in the board pack, because a measure is declared once on the model and every report calls it by name. A question can grow into an analysis, and an analysis can become a weekly report, without a rebuild in another tool.</p>
-    <div class="grid g3 path3" style="margin-top:1.6em">
-      <div class="card val"><div class="ic">ASK</div><h3>An answer in seconds</h3><p>“What was fair value in Software last quarter, by fund?” An agent queries the model and answers, with the definition it used and a fingerprint behind every number. Nothing to review: it only uses definitions a person already approved.</p><span class="today">today: Ask in the app, and from any MCP agent</span></div>
-      <div class="card val"><div class="ic">BUILD</div><h3>A one-off analysis, your way</h3><p>An analyst and their agent explore live, keep the charts that tell the story, write the prose, and lay out the page with the team’s style. The result is one file where every number can be traced back to its query and re-checked. Most analysis is done once, and that’s fine.</p><span class="today">today: tracebi new-dashboard · dev · report build</span></div>
-      <div class="card val"><div class="ic">SCHEDULE</div><h3>Approve it once</h3><p>Give a report a <span class="mono">schedule</span> block and it runs on its own: refresh the data, build, check the numbers still reproduce, then email it. Approved once, in a pull request, like any other code.</p><span class="today">today: tracebi schedule run · serve</span></div>
-    </div>
-    <p class="statement" style="margin-top:1.6em">Everything that makes a number is <b>in the repo, reviewable, and governed.</b></p>
-  </section>
-
-  <!-- TWO AUTHORS -->
-  <section id="agents">
-    <p class="eyebrow">Built for agents · controlled by humans</p>
-    <h2>Two authors, one contract.</h2>
-    <p>TraceBi is built for the analyst that is now an agent — <em>and</em> for the human who stays in control of what it ships. Both author the same code against the same contracts; neither gets a shortcut around review or the trace. This is a first-class design goal, not a plugin.</p>
-
-    <p class="rowlabel">the agent builds</p>
-    <p style="max-width:44rem">It works from a <strong>clean structure</strong>, never a blank canvas. <span class="mono">tracebi init</span> scaffolds the three-folder project; <span class="mono">tracebi context</span> hands the agent the exact vocabulary that exists — the facts, dimensions, measure kinds, and operators — so it never guesses; and a report is structured slots to fill against a closed, declarative grammar. There is a right shape for the work, and the framework shows the agent where it is.</p>
-    <div class="grid g3">
-      <div class="card val"><div class="ic">KNOWS YOUR DEFINITIONS</div><h3>Does it right</h3><p>Good practice is baked into the <em>environment</em>, not a prompt — a curated knowledge base it reads, cited by the errors — and it drives the whole loop over the <span class="mono">MCP</span> gateway.</p></div>
-      <div class="card val"><div class="ic">CAN’T SHIP A WRONG TOTAL</div><h3>Can’t ship the wrong one</h3><p>The silent-wrong patterns are refused by construction, so even a weaker model can’t push a confidently-wrong number through.</p></div>
-      <div class="card val"><div class="ic">CHECKS ITS OWN WORK</div><h3>Re-runs every number</h3><p><span class="mono">tracebi verify</span> mechanically re-runs an agent’s overnight reports and localizes any drift to its source.</p></div>
-    </div>
-
-    <p class="rowlabel" style="margin-top:2em">the human controls</p>
-    <div class="grid g3">
-      <div class="card val"><div class="ic">REVIEW</div><h3>Read it before it ships</h3><p>The agent’s output is a diff — a measure on the model, a figure binding — a person reads in one screen and approves, edits, or rejects: in a pull request, or as a draft in the app’s Review. You decide what is published.</p></div>
-      <div class="card val"><div class="ic">EDIT</div><h3>Change it by hand, anytime</h3><p>It’s plain files: a transform is SQL, a model is YAML, a report is a <span class="mono">report.json</span> with an <span class="mono">app.jsx</span> dashboard or a <span class="mono">template.html</span> page. Rename a measure, rewrite a section — no black box, no round-trip through the agent to fix a typo.</p></div>
-      <div class="card val"><div class="ic">CONTAIN</div><h3>It writes only its own work</h3><p>The gateway has no write access to your warehouse — what the agent writes is its own report builds and drafts a person publishes. It can check everything and rewrite nothing you depend on.</p></div>
-    </div>
-  </section>
-
-  <!-- REPEATABLE BY DESIGN -->
-  <section id="schedule">
-    <p class="eyebrow">Repeatable by design · schedules live in the repo</p>
-    <h2>Approve it once.<br>It shows up every Monday.</h2>
-    <p>A schedule is a few lines in the report’s own <span class="mono">report.json</span>, reviewed in the same pull request as the report. Each run refreshes the data, builds the file, re-checks it, and only then sends it. A failed step stops the run and is recorded, so nobody gets a stale report that looks fresh.</p>
-    <div class="step-panel" style="margin-top:1.6em">
-      <div class="term">
-        <div class="term-bar"><i></i><i></i><i></i><span>reports/weekly_book/report.json · then run it</span></div>
-        <div class="term-body">
-<div class="out">"schedule": {</div>
-<div class="out">  "cron": <span class="hl">"0 7 * * MON"</span>,</div>
-<div class="out">  "timezone": "America/New_York",</div>
-<div class="out">  "to": ["sales-leads@example.com"],</div>
-<div class="out">  "refresh": {"transforms": ["holdings_transform"]}</div>
-<div class="out">}</div>
-<span class="blank"></span>
-<div class="cmd"><span class="p">$ </span>tracebi schedule run weekly_book</div>
-<div class="ok">weekly_book: delivered · reproduces → sales-leads@example.com</div>
-<span class="blank"></span>
-<div class="cmd"><span class="p">$ </span>tracebi schedule serve  <span class="cmt"># every schedule, on cron</span></div>
-        </div>
-      </div>
-      <div class="step-note">
-        <span class="tag">refresh → build → check → send</span>
-        <h3>Every run is recorded</h3>
-        <p>Each run is a row in the run store: what ran, who ran it, whether the numbers reproduced, and who it went to. The app’s History lists them.</p>
-        <p>The schedule is code, so adding or changing one goes through the same review as any other change.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- THE WORKFLOW -->
-  <section id="workflow">
-    <p class="eyebrow">The spine · three phases, two freeze points</p>
-    <h2>Messy data to a live report, decoupled.</h2>
-    <p style="margin-bottom:2em">The slow, unconstrained analysis and the fast, iterated reporting never block each other — because the model between them is a frozen contract. Editing a report never re-runs the transform; the page re-renders in milliseconds.</p>
-
     <div class="flow">
-      <div class="phase">
-        <span class="n">① TRANSFORM</span>
-        <h3>Do the real work</h3>
-        <p>SQL by default, pandas when the work outgrows it — read the raw files and your databases, clean, dedupe, parse. Then <em>sink</em> clean star-schema tables into the warehouse, with checks the tables must pass.</p>
-        <span class="path">transforms/ → warehouse.duckdb</span>
-      </div>
-      <div class="freeze"><span class="ar">→</span><span>freeze: the tables</span></div>
-      <div class="phase">
-        <span class="n">② MODEL</span>
-        <h3>Name the contract</h3>
-        <p>A declarative star schema over the warehouse — grain, keys, measures — in a few dozen lines of YAML a reviewer reads in one screen.</p>
-        <span class="path">models/ → the semantic contract</span>
-      </div>
-      <div class="freeze"><span class="ar">→</span><span>freeze: the model</span></div>
-      <div class="phase">
-        <span class="n">③ REPORT</span>
-        <h3>Bind the figures</h3>
-        <p>A page where every KPI, chart and table cell is a live query against the model — and a filter re-runs those queries in the page.</p>
-        <span class="path">reports/ → a self-contained artifact</span>
-      </div>
-    </div>
-    <p class="muted" style="font-size:.9rem;margin-top:1.6em;max-width:44rem">Each phase is a folder with its own cadence. The <span class="mono">tracebi</span> CLI scaffolds them, runs each one, and serves the result — no BI server to stand up.</p>
-  </section>
-
-  <!-- USER WALKTHROUGH -->
-  <section>
-    <p class="eyebrow">See it as a user · the whole loop in five commands</p>
-    <h2>What you actually type.</h2>
-    <p>From an empty folder to a shareable report anyone can re-check — the real commands, and what each one gives you back. Step through it.</p>
-
-    <div class="walk">
-      <div class="steps" role="tablist" aria-label="Walkthrough steps">
-        <button class="step-btn" data-step="0" role="tab"><span class="num">1</span> scaffold</button>
-        <button class="step-btn" data-step="1" role="tab"><span class="num">2</span> transform</button>
-        <button class="step-btn" data-step="2" role="tab"><span class="num">3</span> model</button>
-        <button class="step-btn" data-step="3" role="tab"><span class="num">4</span> report</button>
-        <button class="step-btn" data-step="4" role="tab"><span class="num">5</span> verify &amp; share</button>
-      </div>
-
-      <div class="step-panel" data-panel="0">
-        <div class="term">
-          <div class="term-bar"><i></i><i></i><i></i><span>bash</span></div>
-          <div class="term-body">
-<div class="cmd"><span class="p">$ </span>tracebi init altsvault</div>
-<div class="ok">Initialised TraceBi project at <b>altsvault/</b></div>
-<div class="out">  ├─ inputs/        <span class="cmt"># raw files (a sample orders.csv)</span></div>
-<div class="out">  ├─ connections/   <span class="cmt"># databases, as YAML</span></div>
-<div class="out">  ├─ transforms/    <span class="cmt"># ① SQL, or pandas</span></div>
-<div class="out">  ├─ models/        <span class="cmt"># ② the star schema, as YAML</span></div>
-<div class="out">  ├─ reports/       <span class="cmt"># ③ sample_model/sample_dashboard</span></div>
-<div class="out">  ├─ pipelines/     <span class="cmt"># transform, then rebuild the reports</span></div>
-<div class="out">  └─ tracebi.yaml · AGENTS.md · .mcp.json</div>
-<span class="blank"></span>
-<div class="cmd"><span class="p">$ </span>cd altsvault &amp;&amp; tracebi run-pipeline sample_model</div>
-<div class="ok">[tracebi] 2 layer(s) completed.</div>
+      <article class="card stepc rv">
+        <span class="n" aria-hidden="true">01</span>
+        <div class="viz" aria-hidden="true">
+          <div class="v-rows">
+            <div class="v-col messy"><i></i><i></i><i></i><i></i></div>
+            <div class="v-arrow">&rarr;</div>
+            <div class="v-col clean"><i></i><i></i><i></i><i></i></div>
+          </div>
+          <span class="v-check chip ok">checks passed</span>
+        </div>
+        <h3>Bring your data in</h3>
+        <p>Connect a database or drop in a spreadsheet. A short cleaning step turns it into tidy tables, and checks you choose (no duplicates, nothing missing) must pass, or the run stops.</p>
+        <details class="eng"><summary>For engineers</summary><div class="body">A transform is DuckDB SQL by default (pandas or polars when you need it) that ends by writing star-schema tables to the warehouse. A <code>.contract.yaml</code> beside it declares the checks; a failed check stops the run. A <code>-- source:</code> line reads a table from a database you declared.
+<pre>-- transforms/holdings_transform.sql
+-- source: crm.issuer_ratings [fallback: inputs/issuer_ratings.csv]
+CREATE OR REPLACE TABLE fact_holdings AS …</pre>
+<a href="/docs/reference/transform-sql.html">Transform SQL reference</a> · <a href="/docs/concepts/sink-contracts.html">Sink contracts</a></div></details>
+      </article>
+      <article class="card stepc rv d1">
+        <span class="n" aria-hidden="true">02</span>
+        <div class="viz" aria-hidden="true">
+          <div class="v-def">
+            <div><span class="k">fair_value</span> = <b>sum</b>(fair_value)</div>
+            <div><span class="k">mark</span> = fair_value <b>/</b> cost</div>
+            <div><span class="k">positions</span> = <b>count</b>(holdings)</div>
           </div>
         </div>
-        <div class="step-note">
-          <span class="tag">one command</span>
-          <h3>Scaffold the project</h3>
-          <p>One folder per phase, a working sample from raw file to dashboard, the warehouse declared in <span class="mono">tracebi.yaml</span>, and an <span class="mono">AGENTS.md</span> that teaches an agent the whole grammar. It’s a repo from minute one: <span class="mono">git init</span> and commit.</p>
+        <h3>Say what the numbers mean</h3>
+        <p>Write down once what “revenue” or “fair value” means: which column, how it adds up. Every report, and every AI agent, uses that one definition.</p>
+        <details class="eng"><summary>For engineers</summary><div class="body">The model is a short YAML star schema over the warehouse: tables, joins, grain and named measures (ratios, shares, ranks, period-over-period, to-date, percentiles). Classic silent mistakes, such as averaging a ratio or summing a balance over time, are refused with the fix named.
+<pre>measures:
+  - {name: fair_value, column: fair_value, agg: sum, format: currency0}
+  - {name: mark, ratio: [fair_value, cost_basis], format: percent}</pre>
+<a href="/docs/concepts/model.html">The model</a> · <a href="/docs/reference/measures.html">Measures</a></div></details>
+      </article>
+      <article class="card stepc rv d2">
+        <span class="n" aria-hidden="true">03</span>
+        <div class="viz" aria-hidden="true">
+          <div class="v-rep">
+            <div class="v-kpi"><small>Fair value</small>$285.9M</div>
+            <div class="v-bars"><i style="width:92%"></i><i style="width:74%"></i><i style="width:48%"></i></div>
+          </div>
+          <span class="v-pop">fact_holdings · sum · f1abefad</span>
         </div>
-      </div>
+        <h3>Build reports that show their work</h3>
+        <p>Dashboards, long reads and printed packs where every figure is a live calculation against those definitions, with its trace one click away.</p>
+        <details class="eng"><summary>For engineers</summary><div class="body">A report is a package: <code>report.json</code> names each figure’s query, and an <code>app.jsx</code> dashboard or a <code>template.html</code> page lays them out. <code>tracebi report build</code> writes one self-contained HTML file and a manifest of every query and fingerprint.
+<pre>$ tracebi report build portfolio_model/portfolio_dashboard
+Rendered portfolio_model/portfolio_dashboard (package)
+  → output/portfolio_model/portfolio_dashboard.html</pre>
+<a href="/docs/concepts/report.html">Reports</a> · <a href="/docs/reference/app-jsx.html">app.jsx</a></div></details>
+      </article>
+    </div>
+  </div>
+</section>
 
-      <div class="step-panel" data-panel="1" hidden>
-        <div class="term">
-          <div class="term-bar"><i></i><i></i><i></i><span>transforms/holdings_transform.sql — then run it</span></div>
-          <div class="term-body">
-<div class="cmd"><span class="p">$ </span>tracebi new-transform "Holdings"</div>
-<div class="out">Created transforms/holdings.sql (file tier) and transforms/holdings.contract.yaml</div>
-<span class="blank"></span>
-<div class="cmt">-- the reference project's, abridged: parse, clean, dedupe …</div>
-<div class="out">-- source: <span class="hl">crm.issuer_ratings</span> fallback: inputs/issuer_ratings.csv</div>
-<div class="out">CREATE OR REPLACE TABLE <b>dim_issuer</b> AS</div>
-<div class="out">SELECT row_number() OVER (ORDER BY issuer, sector) AS issuer_id, issuer, sector</div>
-<div class="out">FROM (SELECT DISTINCT issuer, sector FROM keyed);</div>
-<span class="blank"></span>
-<div class="cmd"><span class="p">$ </span>tracebi run-transform holdings_transform</div>
-<div class="out">Running transforms/holdings_transform.sql (form: sql; top-to-bottom, fresh connection)…</div>
-<div class="ok">form: sql</div>
+<!-- ============ WHY IT MATTERS ============ -->
+<section id="why" style="padding-top:0">
+  <div class="wrap">
+    <div class="head rv">
+      <span class="eyebrow">Why it matters</span>
+      <h2>Trust you can check, not trust you’re asked for.</h2>
+    </div>
+    <div class="why">
+      <div class="card rv"><div class="big">Numbers you can follow home</div><p>Every figure links back through its query and definition to the tables and files it was built from. Questions that used to take an afternoon take a click.</p></div>
+      <div class="card rv d1"><div class="big">Agents can’t fake a checked number</div><p>Every figure on a TraceBi page is a query against your definitions, recorded in its trace. A number with no query behind it gets no fingerprint, so it can never pass the check.</p></div>
+      <div class="card rv d2"><div class="big">Reviews that take minutes</div><p>A change is a short, readable difference (a definition, a chart’s query) that a person approves, not a spreadsheet to rebuild. Months later, anyone can re-run the check.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WHO IT'S FOR ============ -->
+<section id="who" style="padding-top:0">
+  <div class="wrap">
+    <div class="head rv"><span class="eyebrow">Who it’s for</span><h2>For anyone who has to stand behind a number.</h2></div>
+    <div class="who">
+      <div class="card rv"><span class="role">Finance and investments</span><h3>Board packs you can defend</h3><p>Fund reports and month-end packs where every figure can be followed back to the data when someone asks.</p></div>
+      <div class="card rv d1"><span class="role">Operations and business leads</span><h3>Dashboards that explain themselves</h3><p>Filter, click, drill in, and see exactly what a number includes without filing a ticket.</p></div>
+      <div class="card rv d2"><span class="role">Data and analytics engineers</span><h3>SQL, YAML and git</h3><p>No BI server to license, no logic hidden in a GUI. Reviews happen in pull requests, like the rest of your code.</p></div>
+      <div class="card rv d3"><span class="role">Teams adopting AI agents</span><h3>Speed with a paper trail</h3><p>Agents draft, answer and propose; your definitions, approvals and checks keep their work honest.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TRACE A NUMBER ============ -->
+<section class="tsec" id="trace">
+  <div class="wrap">
+    <div class="head rv">
+      <span class="eyebrow">Trace any number</span>
+      <h2>Pick a number. Follow it all the way back.</h2>
+      <p class="lede">This is the fair value figure from the sample report, with the trace it was built with. Play it through, or change the number and watch the check catch it.</p>
+    </div>
+    <div class="tdemo">
+      <div class="tk rv">
+        <div class="lab"><span>Fair value · Portfolio Showcase</span><span class="chip ok" id="tkChip">reproduces</span></div>
+        <div class="val" id="tkVal">$285.9M</div>
+        <div class="meta">Total fair value of 25 loans across three funds</div>
+        <div class="ctrl">
+          <button class="go" id="tPlay" type="button">&#9654; Trace it</button>
+          <button id="tTamper" type="button">Change the number in the file</button>
+          <button id="tReset" type="button" hidden>Reset</button>
+        </div>
+        <div class="verdict ok" id="tVerdict" role="status" aria-live="polite" hidden></div>
+      </div>
+      <ol class="steps5" id="steps5">
+        <li class="rv"><h3>Where it came from</h3><p>A spreadsheet export of the funds’ loans, plus credit ratings read from the company’s CRM database (here, the committed snapshot stood in for it).</p><span class="fact">inputs/holdings.csv · crm.issuer_ratings, snapshot inputs/issuer_ratings.csv → transforms/holdings_transform.sql</span></li>
+        <li class="rv"><h3>The clean table it landed in</h3><p>The cleanup wrote one tidy row per loan, and the checks declared beside it all passed. In TraceBi’s words: the table satisfied its contract.</p><span class="fact">fact_holdings · 25 rows · 5 of 5 checks satisfied</span></li>
+        <li class="rv"><h3>What “fair value” means</h3><p>One definition, written once on the model, used by this report, every other report and every agent that asks.</p><span class="fact">portfolio_model · fair_value = sum(fair_value), shown as currency</span></li>
+        <li class="rv"><h3>The exact question asked</h3><p>The query this figure ran, recorded in the report’s manifest the moment it was built.</p><span class="fact">fact_holdings · measures fair_value, unrealized, mark, positions, wtd_spread_bps, spread_p90 · DuckDB 1.5.6</span></li>
+        <li class="rv last"><h3>A fingerprint, and a re-run</h3><p>A SHA-256 fingerprint of the result. Re-run the query any time; if it comes out the same, the number reproduces.</p><span class="fact">f1abefad59bd…2440287bd2fdf33c · tracebi verify → REPRODUCES</span></li>
+      </ol>
+    </div>
+    <p class="honest rv">An illustration built from the sample’s recorded trace; the buttons do not hash anything. The real check is <code>tracebi verify</code>. It tells you a number <em>reproduces</em> and that the file was not edited after it was built. It does not claim the number is correct, and it does not check the cleanup step’s logic, which is reviewed like any other code.</p>
+
+    <figure class="rv" style="margin-top:clamp(48px,7vw,80px)">
+      <div class="frame">
+        <picture class="th-light">
+          <source type="image/avif" srcset="/assets/shots/trace-light-800.avif 800w, /assets/shots/trace-light-1600.avif 1600w" sizes="(min-width:1180px) 1130px, 100vw">
+          <source type="image/webp" srcset="/assets/shots/trace-light-800.webp 800w, /assets/shots/trace-light-1600.webp 1600w" sizes="(min-width:1180px) 1130px, 100vw">
+          <img src="/assets/shots/trace-light.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt="The sample report with its trace open beside it: for each figure, its value, the query it ran and an eight-character fingerprint with a Copy button.">
+        </picture>
+        <picture class="th-dark">
+          <source type="image/avif" srcset="/assets/shots/trace-dark-800.avif 800w, /assets/shots/trace-dark-1600.avif 1600w" sizes="(min-width:1180px) 1130px, 100vw">
+          <source type="image/webp" srcset="/assets/shots/trace-dark-800.webp 800w, /assets/shots/trace-dark-1600.webp 1600w" sizes="(min-width:1180px) 1130px, 100vw">
+          <img src="/assets/shots/trace-dark.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt="The sample report in its dark look with its trace open beside it: for each figure, its value, the query it ran and its fingerprint.">
+        </picture>
+      </div>
+      <figcaption>The same trace in the report itself: click a number and it opens beside the page. Re-run against the reference data, the sample’s 38 figures read 37 reproduce and 1 unverifiable, a chart computed in Python that says so instead of pretending.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ LIVE REPORTS ============ -->
+<section id="live">
+  <div class="wrap">
+    <div class="split">
+      <div class="rv">
+        <span class="eyebrow">Live reports</span>
+        <h2>Reports that answer the next question.</h2>
+        <p class="lede">Pick a sector, click a bar, drag a range. Every figure on the page recalculates by re-running its own query on the data the file carries.</p>
+        <ul class="ticks">
+          <li><b>One file, no server.</b> It opens in any browser, works offline and emails like a PDF.</li>
+          <li><b>Never a sum of what’s on screen.</b> A filtered number is the same calculation, asked again.</li>
+          <li><b>Your look.</b> Three house themes, your fonts and colours, interactive charts drawn by Apache ECharts.</li>
+        </ul>
+      </div>
+      <div class="ba rv d1">
+        <div class="ba-tabs" role="tablist" aria-label="Filter the sample report">
+          <button role="tab" id="baAll" aria-selected="true" aria-controls="paneAll" type="button">Whole book</button>
+          <button role="tab" id="baSw" aria-selected="false" aria-controls="paneSw" type="button">Sector: Software</button>
+        </div>
+        <div class="ba-view frame">
+          <div class="pane" id="paneAll" role="tabpanel" aria-labelledby="baAll">
+            <picture class="th-light"><source type="image/avif" srcset="/assets/shots/showcase-light-800.avif 800w, /assets/shots/showcase-light-1600.avif 1600w" sizes="(min-width:960px) 640px, 100vw"><source type="image/webp" srcset="/assets/shots/showcase-light-800.webp 800w, /assets/shots/showcase-light-1600.webp 1600w" sizes="(min-width:960px) 640px, 100vw"><img src="/assets/shots/showcase-light.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt="The sample report showing the whole book: fair value $285.9M."></picture>
+            <picture class="th-dark"><source type="image/avif" srcset="/assets/shots/showcase-dark-800.avif 800w, /assets/shots/showcase-dark-1600.avif 1600w" sizes="(min-width:960px) 640px, 100vw"><source type="image/webp" srcset="/assets/shots/showcase-dark-800.webp 800w, /assets/shots/showcase-dark-1600.webp 1600w" sizes="(min-width:960px) 640px, 100vw"><img src="/assets/shots/showcase-dark.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt="The sample report showing the whole book: fair value $285.9M."></picture>
+          </div>
+          <div class="pane" id="paneSw" role="tabpanel" aria-labelledby="baSw" hidden>
+            <picture class="th-light"><source type="image/avif" srcset="/assets/shots/filtered-light-800.avif 800w, /assets/shots/filtered-light-1600.avif 1600w" sizes="(min-width:960px) 640px, 100vw"><source type="image/webp" srcset="/assets/shots/filtered-light-800.webp 800w, /assets/shots/filtered-light-1600.webp 1600w" sizes="(min-width:960px) 640px, 100vw"><img src="/assets/shots/filtered-light.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt="The same report filtered to the Software sector: fair value recalculated to $60M."></picture>
+            <picture class="th-dark"><source type="image/avif" srcset="/assets/shots/filtered-dark-800.avif 800w, /assets/shots/filtered-dark-1600.avif 1600w" sizes="(min-width:960px) 640px, 100vw"><source type="image/webp" srcset="/assets/shots/filtered-dark-800.webp 800w, /assets/shots/filtered-dark-1600.webp 1600w" sizes="(min-width:960px) 640px, 100vw"><img src="/assets/shots/filtered-dark.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt="The same report filtered to the Software sector: fair value recalculated to $60M."></picture>
           </div>
         </div>
-        <div class="step-note">
-          <span class="tag">phase ① · unconstrained</span>
-          <h3>Do the real analysis</h3>
-          <p>DuckDB SQL by default, pandas or polars as the escape hatch; the framework doesn’t constrain how you clean. A <span class="mono">-- source:</span> line reads a table from a database you declared. End by <em>sinking</em> clean star-schema tables into the warehouse; the checks beside it in <span class="mono">.contract.yaml</span> must pass, or the run fails. Nothing downstream ever opens this file.</p>
-        </div>
-      </div>
-
-      <div class="step-panel" data-panel="2" hidden>
-        <div class="term">
-          <div class="term-bar"><i></i><i></i><i></i><span>models/portfolio_model.yaml</span></div>
-          <div class="term-body">
-<div class="cmd"><span class="p">$ </span>tracebi new-model "Holdings"</div>
-<div class="out">Created models/holdings.yaml</div>
-<span class="blank"></span>
-<div class="out">name: <span class="hl">portfolio_model</span></div>
-<div class="out">dimensions:</div>
-<div class="out">  - {name: dim_issuer, table: dim_issuer, key: issuer_id, attributes: [issuer, sector]}</div>
-<div class="out">measures:  <span class="cmt"># declared once, used everywhere</span></div>
-<div class="out">  - {name: fair_value, column: fair_value, agg: sum, format: currency0}</div>
-<div class="out">  - {name: <b>wtd_spread_bps</b>, ratio: [spread_x_par, par_amount]}</div>
-<div class="out">  - {name: <b>fv_rank_in_sector</b>, rank: fair_value, partition_by: [dim_issuer.sector]}</div>
-<div class="out">  - {name: <b>spread_p90</b>, column: spread_bps, agg: p90}</div>
-          </div>
-        </div>
-        <div class="step-note">
-          <span class="tag">phase ② · the contract</span>
-          <h3>Declare the model</h3>
-          <p>A few dozen declarative lines a reviewer reads in one screen — grain, keys, and named measures. This is the semantic layer: define a par-weighted spread or a per-sector rank <em>once</em>, and every report calls it by name.</p>
-        </div>
-      </div>
-
-      <div class="step-panel" data-panel="3" hidden>
-        <div class="term">
-          <div class="term-bar"><i></i><i></i><i></i><span>bash</span></div>
-          <div class="term-body">
-<div class="cmd"><span class="p">$ </span>tracebi new-dashboard "Holdings Board"</div>
-<div class="out">Created reports/holdings_board/ (report.json, app.jsx) …</div>
-<span class="blank"></span>
-<div class="cmd"><span class="p">$ </span>tracebi report build portfolio_model/portfolio_dashboard</div>
-<div class="ok">Rendered portfolio_model/portfolio_dashboard (package) → <span class="file">output/portfolio_model/portfolio_dashboard.html</span></div>
-<div class="out">  manifest → output/portfolio_model/portfolio_dashboard.html.manifest.json</div>
-<div class="cmt"># ≈ 1.3 MB, self-contained: charts, data and styles inlined</div>
-<span class="blank"></span>
-<div class="cmd"><span class="p">$ </span>tracebi dev portfolio_model/portfolio_dashboard  <span class="cmt"># or iterate live</span></div>
-<div class="out">  TraceBi dev — portfolio_model/portfolio_dashboard in the app, Build mode</div>
-          </div>
-        </div>
-        <div class="step-note">
-          <span class="tag">phase ③ · milliseconds</span>
-          <h3>Build the report</h3>
-          <p>A <span class="mono">report.json</span> names the queries; an <span class="mono">app.jsx</span> dashboard or a <span class="mono">template.html</span> page lays them out. Every figure is a live query against the frozen model, so the page renders in milliseconds. The output is <em>one</em> HTML file with charts, data and styling inlined. Edit the layout all day; it never re-runs the analysis.</p>
-        </div>
-      </div>
-
-      <div class="step-panel" data-panel="4" hidden>
-        <div class="term">
-          <div class="term-bar"><i></i><i></i><i></i><span>bash</span></div>
-          <div class="term-body">
-<div class="cmd"><span class="p">$ </span>tracebi verify output/portfolio_model/portfolio_dashboard.html.manifest.json</div>
-<div class="ok">✓ satisfied    fact_holdings — 5 check(s), transform 'holdings'</div>
-<div class="ok">figures: 7 — 7 reproduce. <b>REPRODUCES</b></div>
-<span class="blank"></span>
-<div class="cmd"><span class="p">$ </span>tracebi verify --file output/portfolio_model/portfolio_dashboard.html</div>
-<div class="ok">5 binding(s) checked: 5 matches · <b>FILE INTACT</b></div>
-<span class="blank"></span>
-<div class="cmt"># send the report and its manifest (the .manifest.json).</div>
-<div class="cmt"># months later, anyone can re-check them offline,</div>
-<div class="cmt"># with no database and no account.</div>
-<div class="cmd"><span class="p">$ </span>tracebi serve  <span class="cmt"># or browse the whole project</span></div>
-<div class="out">TraceBi — serving portfolio_project (4 models, 4 pipelines)</div>
-          </div>
-        </div>
-        <div class="step-note">
-          <span class="tag">ship it</span>
-          <h3>Verify &amp; share</h3>
-          <p>The report you send carries its own trace. <span class="mono">verify</span> re-runs the recorded queries against the model, beside the sink contracts recorded at build; <span class="mono">verify --file</span> checks, offline, that the numbers in the file weren’t edited after the fact.</p>
-        </div>
-      </div>
-
-      <div class="walk-nav">
-        <button id="walkPrev">← back</button>
-        <button class="primary" id="walkNext">next step →</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- SEMANTIC LAYER -->
-  <section id="layer">
-    <p class="eyebrow">The semantic layer · where the depth is</p>
-    <h2>Measures declared once.<br>Referenced by name, everywhere.</h2>
-    <p>The heart of the framework is a real semantic layer: a metric is defined in <em>one</em> place on the model — reviewed in a pull request, versioned in git — and every report calls it by name. No more re-deriving “revenue” five different ways in five different scripts.</p>
-    <p>And the hard patterns that used to force a hand-written script are first-class measures. A whole concentration table is three declarations:</p>
-
-    <div class="cmp" style="margin:1.8em 0">
-      <div class="cmp-col bad">
-        <div class="cmp-h"><span>hand-rolled in a script</span></div>
-        <div class="cmp-b">
-<pre># somewhere in report.py
-df = q("select * from holdings")
-df = df.sort_values("fv", ascending=False)
-df["rank"]  = range(1, len(df)+1)
-df["share"] = df.fv / df.fv.sum()
-<span class="tok-c"># re-implemented per report,
-# reviewed by nobody</span></pre>
-          <p class="note">Metric logic scattered across scripts — the definition drifts, and the next report reinvents it.</p>
-        </div>
-      </div>
-      <div class="cmp-col good">
-        <div class="cmp-h"><span>declared on the model</span></div>
-        <div class="cmp-b">
-<pre># models/portfolio_model.yaml
-- {name: fv_rank,      rank: fair_value}
-- {name: fv_share,     share: fair_value}
-- {name: fv_cum_share, running: fv_share}
-<span class="tok-c"># one definition, referenced by name
-# from every report and every query</span></pre>
-          <p class="note">Reviewed once, versioned in git, called by name — the same number everywhere it appears.</p>
-        </div>
+        <p class="small muted" style="margin-top:12px">Real captures of the sample report: fair value $285.9M for the whole book, $60M once Software is picked.</p>
       </div>
     </div>
 
-    <p class="rowlabel">the grammar</p>
-    <div class="scroll">
-      <table class="mtable">
-        <tr><td class="m">ratio · share · rank · running</td><td class="d">Ratios of totals (never a mean of ratios), % of total, concentration &amp; Pareto tables.</td></tr>
-        <tr><td class="m">median · stddev · p90 / p95 / p99</td><td class="d">The distribution and its <em>tail</em> — the worst marks a mean and even a median hide.</td></tr>
-        <tr><td class="m">period_end</td><td class="d">Semi-additive AUM / NAV — summed across funds, latest snapshot over time. Never double-counted.</td></tr>
-        <tr><td class="m">offset · growth</td><td class="d">Period-over-period — YoY, QoQ, MoM — as a measure, not a self-join.</td></tr>
-        <tr><td class="m">to_date</td><td class="d">YTD / QTD / MTD cumulatives that reset on the period boundary.</td></tr>
-        <tr><td class="m">rank + partition_by · having</td><td class="d">Top-3-issuers-<em>per-sector</em> — a governed query, not a spreadsheet pivot.</td></tr>
-        <tr><td class="m">time grains · value bins · or / and filters</td><td class="d">Group by month, by balance band; filter on <em>this</em> OR <em>that</em> across columns.</td></tr>
-      </table>
+    <div class="live rv" id="liveBox">
+      <button class="live-btn" id="liveBtn" type="button">Try it here: load the live sample report (1.6 MB, runs entirely in your browser)</button>
     </div>
-    <p class="muted" style="font-size:.9rem;margin-top:1.4em;max-width:44rem">A closed, declarative grammar — no free-form SQL to review, and every measure is data you can diff, validate before it runs, and generate.</p>
-  </section>
 
-  <!-- GUARDRAILS -->
-  <section>
-    <p class="eyebrow">Guardrails that teach</p>
-    <h2>The wrong number is made<br>unavailable — at the keystroke.</h2>
-    <p>The framework’s cardinal rule is that it never returns a confident, silently-<em>wrong</em> total. So the model refuses the classic mistakes the moment you declare them, and the refusal names the fix — a guardrail is a lesson that fires when it matters, that no author (human or agent) can skip.</p>
-
-    <div class="grid g3" style="margin-top:1.6em">
-      <div class="guard">
-        <div class="wrong">mean(spread_bps) ✕</div>
-        <h3>Mean of a ratio</h3>
-        <p>A per-row rate averaged overweights small rows. Refused — by its name, or by values that look like ratios when the name hides it — with a pointer to a ratio of totals.</p>
-      </div>
-      <div class="guard">
-        <div class="wrong">sum(aum) over time ✕</div>
-        <h3>Stock double-count</h3>
-        <p>Summing a balance across snapshots triple-counts the same money. Refused, with a pointer to a semi-additive <span class="mono">period_end</span>.</p>
-      </div>
-      <div class="guard">
-        <div class="wrong">join on a non-unique key ✕</div>
-        <h3>Fan-out inflation</h3>
-        <p>A join that silently multiplies every additive measure is refused by default — a total never inflates by accident.</p>
-      </div>
+    <div class="reps">
+      <a class="rep rv" href="/sample/portfolio_showcase.html">
+        <div class="thumb">
+          <picture class="th-light"><source type="image/avif" srcset="/assets/shots/showcase-light-800.avif" ><img src="/assets/shots/showcase-light.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt=""></picture>
+          <picture class="th-dark"><source type="image/avif" srcset="/assets/shots/showcase-dark-800.avif"><img src="/assets/shots/showcase-dark.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt=""></picture>
+        </div>
+        <div class="rb"><span class="kind">Dashboard app</span><h3>Portfolio Showcase</h3><p>Five views of a lending book, filters in the sidebar, every chart clickable.</p><span class="open">Open the report &rarr;</span></div>
+      </a>
+      <a class="rep rv d1" href="/sample/affordability.html">
+        <div class="thumb">
+          <picture class="th-light"><source type="image/avif" srcset="/assets/shots/affordability-light-800.avif"><img src="/assets/shots/affordability-light.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt=""></picture>
+          <picture class="th-dark"><source type="image/avif" srcset="/assets/shots/affordability-dark-800.avif"><img src="/assets/shots/affordability-dark.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt=""></picture>
+        </div>
+        <div class="rb"><span class="kind">Long read</span><h3>Housing affordability</h3><p>An editorial story on public data, with a what-if you can play with and a print edition.</p><span class="open">Open the report &rarr;</span></div>
+      </a>
+      <a class="rep rv d2" href="/sample/portfolio_dashboard.html">
+        <div class="thumb">
+          <picture class="th-light"><source type="image/avif" srcset="/assets/shots/dashboard-light-800.avif"><img src="/assets/shots/dashboard-light.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt=""></picture>
+          <picture class="th-dark"><source type="image/avif" srcset="/assets/shots/dashboard-dark-800.avif"><img src="/assets/shots/dashboard-dark.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt=""></picture>
+        </div>
+        <div class="rb"><span class="kind">One-screen dashboard</span><h3>Portfolio Dashboard</h3><p>The simplest shape: four figures, two charts, one table, all filterable.</p><span class="open">Open the report &rarr;</span></div>
+      </a>
     </div>
-  </section>
+    <p class="dl rv">Each report comes with its manifest (<a href="/sample/portfolio_showcase.html.manifest.json" download>showcase</a>, <a href="/sample/affordability.html.manifest.json" download>affordability</a>, <a href="/sample/portfolio_dashboard.html.manifest.json" download>dashboard</a>). Save a report and its manifest side by side and run <code>tracebi verify --file portfolio_showcase.html</code>: it reads FILE INTACT.</p>
+  </div>
+</section>
 
-  <!-- MAKE IT YOURS -->
-  <section id="style">
-    <p class="eyebrow">Make it yours · themes, fonts, images</p>
-    <h2>Same data, same trace.<br>Your brand.</h2>
-    <p>A report is plain HTML and CSS, so it can look like anything your team wants: your fonts, your colours, a gradient header, a background image. It still builds to one file that opens anywhere, and every bound figure keeps its fingerprint.</p>
-    <div class="grid g3" style="margin-top:1.4em">
-      <div class="card val"><div class="ic">STYLE.CSS</div><h3>Your layout</h3><p>A good default look out of the box. Override any of it in the package’s own <span class="mono">style.css</span>.</p></div>
-      <div class="card val"><div class="ic">ASSETS/</div><h3>Your fonts and images</h3><p>Drop fonts and images in <span class="mono">assets/</span>. They are inlined at build time, so nothing loads from the internet.</p></div>
-      <div class="card val"><div class="ic">PALETTE</div><h3>Your charts</h3><p>Charts are drawn with D3, bundled in the file: hover, legends, and a click on a bar filters the page. Your palette is a few CSS variables, and nothing in it can touch a number.</p></div>
+<!-- ============ AGENTS ============ -->
+<section id="agents" class="tsec">
+  <div class="wrap">
+    <div class="head rv">
+      <span class="eyebrow">AI agents, inside the rules</span>
+      <h2>Let agents do the work. Keep people in charge of the numbers.</h2>
+      <p class="lede">Agents read your definitions, answer questions, draft reports and propose changes to the cleanup. They never write to your warehouse themselves: a change to the cleanup runs only after an admin approves it, and each project decides whether a person signs off before a report is published.</p>
+      <p class="small muted" style="margin-top:1.2rem">A proposed change to the cleanup, step by step:</p>
     </div>
-    <p class="muted" style="font-size:.9rem;margin-top:1.4em;max-width:44rem">The sample report above is the reference project’s showcase: an open-licence display face, its own accent colour and a custom D3 treemap, built from the same model as the plain dashboard.</p>
-  </section>
+    <ol class="loop">
+      <li class="rv"><h3>The agent proposes</h3><p>A change to the cleanup step, as a plain SQL file with a note saying why.</p></li>
+      <li class="rv d1"><h3>A dry run shows the effect</h3><p>A proposed cleanup change runs once on a throwaway copy and reports which tables are new, changed or unchanged.</p></li>
+      <li class="rv d2"><h3>A person approves</h3><p>Reviewers read the difference in the app and approve or reject it, with a note.</p></li>
+      <li class="rv d3"><h3>It’s on the record</h3><p>Approval commits exactly those files to git: the agent as author, you as approver.</p></li>
+    </ol>
 
-  <!-- THE OUTPUT (artifact + reproducible, with demo) -->
-  <section>
-    <p class="eyebrow">The output</p>
-    <h2>A report is one file.<br>And every number in it can be checked.</h2>
-    <p>The framework renders a report to a single self-contained HTML artifact — charts, data, and styling all inlined, no server, no CDN. It opens anywhere and emails cleanly. And because every figure was a live query, each one ships stamped with the query and a fingerprint of its bytes, so <span class="mono">tracebi verify --file</span> can confirm, offline, that nothing was edited after the fact. Send the report and its manifest; anyone can re-check them later.</p>
-    <p>And the page stays live. It carries the slice of the model its figures read, so a filter, or a click on a bar or a row, re-runs each figure’s own query inside the file — never a sum of whatever is on screen.</p>
+    <figure class="rv">
+      <div class="frame">
+        <picture class="th-light">
+          <source type="image/avif" srcset="/assets/shots/workbench-light-800.avif 800w, /assets/shots/workbench-light-1600.avif 1600w" sizes="(min-width:1180px) 1130px, 100vw">
+          <source type="image/webp" srcset="/assets/shots/workbench-light-800.webp 800w, /assets/shots/workbench-light-1600.webp 1600w" sizes="(min-width:1180px) 1130px, 100vw">
+          <img src="/assets/shots/workbench-light.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt="Left, an illustrated agent chat about whether fair value by sector looks right. Right, the real TraceBi workbench panel: the Portfolio Dashboard, live, a list of its seven figures each marked model query, and an open pin on the sector chart asking whether Consumer includes a restructure.">
+        </picture>
+        <picture class="th-dark">
+          <source type="image/avif" srcset="/assets/shots/workbench-dark-800.avif 800w, /assets/shots/workbench-dark-1600.avif 1600w" sizes="(min-width:1180px) 1130px, 100vw">
+          <source type="image/webp" srcset="/assets/shots/workbench-dark-800.webp 800w, /assets/shots/workbench-dark-1600.webp 1600w" sizes="(min-width:1180px) 1130px, 100vw">
+          <img src="/assets/shots/workbench-dark.jpg" width="1600" height="1000" loading="lazy" decoding="async" alt="The same scene in dark: an illustrated agent chat beside the real TraceBi workbench panel, with the live dashboard, its figures and an open pin on the sector chart.">
+        </picture>
+      </div>
+      <figcaption><b>The workbench, inside the chat.</b> Right: the real MCP Apps panel, captured running against the reference workspace; you click a figure, pin a note, and the agent reads it before its next edit. Left: an illustration of the conversation around it. It opens in hosts that show MCP Apps (the specification lists ChatGPT, Claude and VS Code among them); elsewhere the agent hands you a link to the same view in the app. <a href="/docs/guides/workbench-in-your-agent.html">How the workbench works</a></figcaption>
+    </figure>
+    <div class="hosts rv" aria-label="Agents that connect">
+      <span>Claude</span><span>ChatGPT</span><span>Cursor</span><span>VS Code</span><span>Claude Code</span><span>Any MCP client</span>
+    </div>
+    <p class="small muted rv" style="margin-top:12px">Agents connect through TraceBi’s MCP gateway, with a token or each person’s own sign-in. <a href="/docs/guides/connect-chatgpt-and-claude.html">Connect ChatGPT or Claude</a></p>
+  </div>
+</section>
 
-    <div class="receipt" id="demo" style="margin-top:1.8em">
-      <div class="receipt-top">
-        <div class="kpi-label">Total fair value · <span class="mono">portfolio_model</span></div>
-        <div class="kpi-row">
-          <span class="kpi-val mono" id="kpiVal">$285,904,445</span>
-          <span class="badge b-repro" id="kpiBadge">reproduces</span>
+<!-- ============ PRINT ============ -->
+<section id="print" style="padding-top:clamp(32px,4vw,56px)">
+  <div class="wrap">
+    <div class="split rev">
+      <div class="rv">
+        <span class="eyebrow">Print and share</span>
+        <h2>Print it. The trace comes too.</h2>
+        <p class="lede">Any report prints to a clean PDF for the board pack. Its last pages are “How these numbers were made”: every figure with its query and fingerprint, the checks the data passed, the build, and the command to re-check it.</p>
+        <ul class="ticks">
+          <li><b>Send the HTML</b> when people should be able to filter, or the PDF when it’s going in a binder.</li>
+          <li><b>Schedule it.</b> Refresh the data, build, re-check and email it every Monday, with each run recorded.</li>
+          <li><b>Keep it honest.</b> The HTML file and its manifest are what the check runs on; the PDF is a print of them.</li>
+        </ul>
+      </div>
+      <div class="paper rv d1">
+        <div class="sheet s1">
+          <picture><source type="image/avif" srcset="/assets/shots/print-page-480.avif 480w, /assets/shots/print-page-960.avif 960w" sizes="(min-width:960px) 400px, 62vw"><source type="image/webp" srcset="/assets/shots/print-page-480.webp 480w, /assets/shots/print-page-960.webp 960w" sizes="(min-width:960px) 400px, 62vw"><img src="/assets/shots/print-page.jpg" width="960" height="1242" loading="lazy" decoding="async" alt="Page one of the printed Portfolio Dashboard: four figures and two bar charts."></picture>
+        </div>
+        <div class="sheet s2">
+          <picture><source type="image/avif" srcset="/assets/shots/print-trace-480.avif 480w, /assets/shots/print-trace-960.avif 960w" sizes="(min-width:960px) 400px, 62vw"><source type="image/webp" srcset="/assets/shots/print-trace-480.webp 480w, /assets/shots/print-trace-960.webp 960w" sizes="(min-width:960px) 400px, 62vw"><img src="/assets/shots/print-trace.jpg" width="960" height="1242" loading="lazy" decoding="async" alt="The printed report's last page, How these numbers were made: how to check it, seven figures each with its query and fingerprint, the sink contracts, the stated methodology and the build's commit."></picture>
         </div>
       </div>
-      <div class="receipt-body">
-        <div><span class="k">query&nbsp;&nbsp;&nbsp;</span> fact_holdings · measures=[fair_value] · agg=sum</div>
-        <div><span class="k">engine&nbsp;&nbsp;</span> duckdb 1.5.6 · rows=25</div>
-        <div class="hash"><span class="k">sha-256&nbsp;</span> <span id="hash">107b…2594 · 9862…0faf</span></div>
-        <div class="receipt-actions">
-          <button class="primary" id="btnVerify">▶ tracebi verify --file report.html</button>
-          <button id="btnTamper">✎ edit the number in the file</button>
-          <button id="btnReset" hidden>↺ reset</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TEAMS ============ -->
+<section id="teams" style="padding-top:0">
+  <div class="wrap">
+    <div class="head rv">
+      <span class="eyebrow">Made for teams</span>
+      <h2>One place for the whole company’s numbers.</h2>
+      <p class="lede">A <b>workspace</b> holds your data, the definitions and your brand, one per company. Each area gets a <b>project</b> for its own reports, with its own permissions.</p>
+    </div>
+    <div class="feat rv">
+      <div><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4M3 17l9 4 9-4"/></svg>Workspace and projects</h3><p>Shared definitions, one per number, used by every project. Finance, sales and ops each keep their own reports.</p></div>
+      <div><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Sign-in and permissions</h3><p>Single sign-on through your identity provider. Viewers, analysts and admins, and per-project rights to view, build or publish.</p></div>
+      <div><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Drafts and review</h3><p>Anyone, person or agent, works in a draft. Publishing into a project asks for approval where the project says so.</p></div>
+      <div><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Schedules</h3><p>Refresh, build, re-check and email on a timetable. A failed step stops the run, so nobody gets a stale report that looks fresh.</p></div>
+      <div><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>A map of your data</h3><p>See every source, cleanup step, table, definition and report as one picture, and what depends on what before you change it.</p></div>
+      <div><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>History</h3><p>Every run, build and approval is recorded with who did it and when.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OPEN SOURCE ============ -->
+<section id="open" style="padding-top:0">
+  <div class="wrap">
+    <div class="oss rv">
+      <div>
+        <span class="eyebrow">Open source and self-hosted</span>
+        <h2>Your data stays yours.</h2>
+        <p class="lede">TraceBi is MIT-licensed and runs on your laptop or your own servers. Reports are single files with everything inlined: no tracking, no outside scripts, nothing phoning home.</p>
+        <ul>
+          <li>Reads Postgres, MySQL, SQLite, Snowflake, BigQuery, DuckDB, CSV and Parquet</li>
+          <li>Keeps its warehouse as a DuckDB file, Parquet on object storage, or a remote engine</li>
+          <li>One Docker image for the app, the agent gateway and the scheduler</li>
+        </ul>
+      </div>
+      <div>
+        <div class="logos" aria-label="Sources TraceBi reads">
+          <span>Postgres</span><span>MySQL</span><span>SQLite</span><span>Snowflake</span><span>BigQuery</span><span>DuckDB</span><span>CSV</span><span>Parquet</span><span>S3 / GCS</span>
         </div>
-        <div class="verdict ok" id="verdict" hidden></div>
+        <div class="btns" style="margin-top:26px">
+          <a class="btn" href="https://github.com/saltyscott0521/tracebi">View the code on GitHub</a>
+        </div>
       </div>
     </div>
-    <p class="muted" style="font-size:.88rem;margin-top:1.1em">An illustration of the mechanic. This button does not hash the page. <span class="mono">tracebi verify --file</span> is the check: it proves a number <em>reproduces</em> and the file is <em>intact</em>, and it does not claim the number is “correct.”</p>
-  </section>
+  </div>
+</section>
 
-  <!-- BATTERIES / DEV EXPERIENCE -->
-  <section>
-    <p class="eyebrow">Batteries included</p>
-    <h2>A framework, not a library<br>of loose parts.</h2>
-    <p>Everything the workflow needs ships in the box — and it all runs from your machine, offline, no account.</p>
-    <div class="grid g3" style="margin-top:1.4em">
-      <div class="card val"><div class="ic">CONNECTIONS</div><h3>Read from anywhere</h3><p>Postgres and other SQL databases, Snowflake, BigQuery, DuckDB, CSV — each a short YAML file. A secret is a <span class="mono">${NAME}</span>, resolved from the environment or the project’s encrypted credential store, which an admin can set in the app without the value ever coming back.</p></div>
-      <div class="card val"><div class="ic">SCHEDULING &amp; DELIVERY</div><h3>Runs on its own</h3><p>Refresh, build, check, email, on cron, with a run log. Pipelines run medallion layers upstream-first — or hand the sink to the pipeline you already have.</p></div>
-      <div class="card val"><div class="ic">RENDERERS</div><h3>Ship the report</h3><p>Self-contained HTML with live charts, a PDF print of it, or an Excel workbook — from the same model, same measures.</p></div>
-      <div class="card val"><div class="ic">AGENT GATEWAY (MCP)</div><h3>Plug in any agent</h3><p><span class="mono">tracebi mcp</span> gives Claude, Cursor or your own agent the model, the report grammar, drafts and <span class="mono">verify</span> — 22 tools, and no write access to your warehouse.</p></div>
-      <div class="card val"><div class="ic">CLI + WEB</div><h3>Scaffold, dev, serve</h3><p><span class="mono">tracebi init · dev · report · verify · serve</span> — and the web app: Reports, Ask, Data (the board from sources to reports), Review and Docs.</p></div>
-      <div class="card val"><div class="ic">MIT</div><h3>Yours to run</h3><p>Code-first and open. No BI server to license, no data leaving your environment.</p></div>
+<!-- ============ ENGINEERS ============ -->
+<section id="engineers" style="padding-top:0">
+  <div class="wrap">
+    <div class="head rv">
+      <span class="eyebrow">For engineers</span>
+      <h2>Code-first, all the way down.</h2>
+      <p class="lede">Three folders, each with its own cadence, handed off at fixed points: the warehouse, then the model. Everything is a plain file in git, reviewed in a pull request, and authored as easily by an agent as by you.</p>
     </div>
-  </section>
+    <div class="eng-grid">
+      <div class="rv">
+<pre class="tree" aria-label="A workspace's folders">my_workspace/
+├─ tracebi.yaml   <span class="muted"># the warehouse, the brand</span>
+├─ connections/   <span class="muted"># databases, one YAML each</span>
+├─ inputs/        <span class="muted"># raw files</span>
+├─ <b>transforms/</b>    <span class="muted"># ① SQL (or pandas) → clean tables</span>
+├─ <b>models/</b>        <span class="muted"># ② tables, joins, measures</span>
+├─ <b>reports/</b>       <span class="muted"># ③ one project per model</span>
+└─ pipelines/     <span class="muted"># transform, then rebuild</span></pre>
+        <div class="doclinks">
+          <a href="/docs/concepts/the-three-phase-workflow.html">The three-phase workflow <span>&rarr;</span></a>
+          <a href="/docs/concepts/trace.html">The trace and verify <span>&rarr;</span></a>
+          <a href="/docs/reference/cli.html">CLI reference <span>&rarr;</span></a>
+          <a href="/docs/agents/sop-onboarding.html">How an agent onboards <span>&rarr;</span></a>
+        </div>
+      </div>
+      <div class="rv d1">
+        <div class="tabs" role="tablist" aria-label="Command examples">
+          <button role="tab" type="button" aria-selected="true" aria-controls="tm0" id="tt0">Build</button>
+          <button role="tab" type="button" aria-selected="false" aria-controls="tm1" id="tt1">Verify</button>
+          <button role="tab" type="button" aria-selected="false" aria-controls="tm2" id="tt2">Agents</button>
+        </div>
+        <div class="term" role="tabpanel" id="tm0" aria-labelledby="tt0">
+          <div class="tb" aria-hidden="true"><i></i><i></i><i></i><span>bash</span></div>
+<pre><span class="p">$ </span>tracebi init my_workspace &amp;&amp; cd my_workspace
+<span class="p">$ </span>tracebi run-transform sample_transform
+<span class="p">$ </span>tracebi report build sample_model/sample_dashboard
+<span class="ok">Rendered sample_model/sample_dashboard (package)</span>
+  → output/sample_model/sample_dashboard.html
+  manifest → …/sample_dashboard.html.manifest.json
+<span class="p">$ </span>tracebi dev sample_model/sample_dashboard  <span class="c"># live reload</span>
+<span class="p">$ </span>tracebi serve                              <span class="c"># the web app</span></pre>
+        </div>
+        <div class="term" role="tabpanel" id="tm1" aria-labelledby="tt1" hidden>
+          <div class="tb" aria-hidden="true"><i></i><i></i><i></i><span>bash · the sample report</span></div>
+<pre><span class="p">$ </span>tracebi verify portfolio_showcase.html.manifest.json
+<span class="ok">✓ REPRODUCES</span>                kpi-fv
+<span class="w">· UNVERIFIABLE</span>              chart-conc <span class="c">— inherits binding 'concentration'</span>
+sink contracts (recorded at build):
+<span class="ok">✓ satisfied</span>    fact_holdings <span class="c">— 5 check(s), transform 'holdings'</span>
+figures: 38 — 37 reproduce, 1 unverifiable. <b>REPRODUCES</b>
 
-  <!-- OPEN SOURCE + CLOUD -->
-  <section id="open">
-    <p class="eyebrow">Open source · and a Cloud when you want it</p>
-    <h2>Everything that makes a report<br>is free and yours.</h2>
-    <p>The framework is MIT-licensed and runs on your own machine or servers. A hosted Cloud is planned for teams that would rather not run it themselves. It will never be the only way to get a correct report.</p>
-    <div class="grid g2" style="margin-top:1.4em">
-      <div class="card plan"><div class="ic">OPEN SOURCE · AVAILABLE NOW</div><h3>Self-hosted</h3><ul>
-        <li>Models, reports, their traces and <span class="mono">verify</span></li>
-        <li>Scheduling and email delivery</li>
-        <li>The MCP agent gateway</li>
-        <li>The web app, with roles, sign-in and folder permissions</li>
+<span class="p">$ </span>tracebi verify --file portfolio_showcase.html
+19 binding(s) checked: 19 matches
+<b>FILE INTACT</b> <span class="c">— every embedded data block matches the manifest</span></pre>
+        </div>
+        <div class="term" role="tabpanel" id="tm2" aria-labelledby="tt2" hidden>
+          <div class="tb" aria-hidden="true"><i></i><i></i><i></i><span>bash · the agent gateway</span></div>
+<pre><span class="p">$ </span>tracebi mcp                                  <span class="c"># stdio, for a local agent</span>
+<span class="p">$ </span>tracebi mcp --transport http --port 8765     <span class="c"># remote, with a token</span>
+<span class="c"># 30 tools: describe the workspace, query a model,</span>
+<span class="c"># draft and preview reports, read and propose transforms</span>
+<span class="c"># (each proposal dry-run first), build, verify.</span>
+<span class="c"># No write access to your warehouse.</span>
+<span class="p">$ </span>tracebi context --brief                      <span class="c"># the vocabulary, as JSON</span></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="bound">
+      <div class="card rv"><h3>What a trace proves</h3><ul>
+        <li>The query each figure ran, against which definition, and a SHA-256 fingerprint of what came back.</li>
+        <li>Whether that query still returns the same result (<code>tracebi verify</code>: REPRODUCES, SOURCE DRIFT, MODEL CHANGED, MISMATCH…). An undiagnosed mismatch fails loudly.</li>
+        <li>That a built file was not edited afterwards (<code>verify --file</code>, offline).</li>
+        <li>For a SQL cleanup, which source columns each table column is computed from, as DuckDB’s parser reads it.</li>
       </ul></div>
-      <div class="card plan"><div class="ic">CLOUD · PLANNED</div><h3>Hosted for you</h3><ul>
-        <li>Nothing to install or keep running</li>
-        <li>Review and approve reports in the browser</li>
-        <li>Ask from anywhere in the app and in Slack</li>
-        <li>Reads your warehouse; never writes to it</li>
+      <div class="card rv d1"><h3>What it doesn’t claim</h3><ul>
+        <li>That a number is correct. It claims the number reproduces; the difference is the product.</li>
+        <li>That the cleanup step’s analysis is right. That code is reviewed in git; its tables are held to the checks they declare.</li>
+        <li>Lineage through free-form pandas or notebooks. The line is drawn where clean tables land.</li>
+        <li>Signed attestation. Manifests are not signed yet, and we say so.</li>
       </ul></div>
     </div>
-    <div class="cta-row">
-      <a class="btn ghost" href="https://github.com/saltyscott0521/tracebi">Star it on GitHub</a>
-    </div>
-  </section>
+  </div>
+</section>
 
-  <footer>
-    <div class="rule"></div>
-    <p class="statement" style="font-size:clamp(1.3rem,3vw,1.8rem);max-width:28ch">The report you can <b>read, review, and re-run</b> — because it was code the whole time.</p>
-    <div class="flinks" style="margin-top:1.8em">
-      <a href="/app">Try the demo</a>
-      <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
-      <a href="#workflow">How it works</a>
-      <a href="#layer">Semantic layer</a>
+<!-- ============ FAQ ============ -->
+<section id="faq" style="padding-top:0">
+  <div class="wrap">
+    <div class="head center rv"><span class="eyebrow">Questions</span><h2>In plain words.</h2></div>
+    <div class="faq rv">
+      <details><summary>Do I need to know how to code?</summary><div class="a">To read reports, ask a model a question or pin a note for an agent: no. To set up the data and definitions, someone writes SQL and a little YAML, or asks an AI agent to draft them for a person to approve. Everything ends up as plain files anyone on the team can read.</div></details>
+      <details><summary>Does TraceBi tell me my numbers are right?</summary><div class="a">No, and on purpose. It tells you where a number came from, which definition it used, and whether asking the same question again gives the same answer. Whether the underlying business data is right is still your call; TraceBi makes it something you can check instead of something you’re told.</div></details>
+      <details><summary>Where does my data go?</summary><div class="a">Nowhere you don’t send it. TraceBi runs on your machine or your servers, reads your databases, and writes reports as single files. There is no telemetry. An AI agent works through TraceBi’s gateway: it can query your definitions, and it reads a source database’s tables only where a person has ticked them.</div></details>
+      <details><summary>Which AI tools work with it?</summary><div class="a">Any agent that speaks MCP, the open standard for connecting AI tools: Claude, ChatGPT, Cursor, VS Code, Claude Code and others. In hosts that show MCP Apps, the report opens live beside the conversation.</div></details>
+      <details><summary>Can it read the data we already have?</summary><div class="a">Yes: Postgres, MySQL, SQLite, Snowflake, BigQuery, DuckDB, CSV and Parquet files. Credentials stay in environment variables or an encrypted store; connection files only name them.</div></details>
+      <details><summary>What does it cost?</summary><div class="a">Nothing. TraceBi is open source under the MIT license. You run it yourself, on infrastructure you already have.</div></details>
+      <details><summary>What happens when a number changes?</summary><div class="a">Re-running the check tells you, and narrows down why: the source data moved, the definition changed, or the cause is unknown, which fails loudly instead of being rounded away.</div></details>
     </div>
-    <p class="mono muted" style="margin-top:1.8em;max-width:52rem">A note on scope: TraceBi draws its trust line at the sink, where messy analysis becomes named tables — the trace’s guarantee applies from the model boundary onward, and is a reproduction-and-integrity check, not a proof that a number is “correct.” Every claim on this page is one the framework can stand behind.</p>
-  </footer>
+  </div>
+</section>
 
-</div>
+<!-- ============ GET STARTED ============ -->
+<section id="start" style="padding-top:0">
+  <div class="wrap">
+    <div class="head center rv"><span class="eyebrow">Get started</span><h2>See it, then make your own.</h2></div>
+    <div class="start">
+      <div class="card rv">
+        <h3>Explore the live demo</h3>
+        <p>The reference workspace, served: four models, from a lending portfolio to housing affordability. Open the reports, ask a model a question, and follow any number from source to page.</p>
+        <div class="btns" style="margin-top:auto"><a class="btn primary" href="/app">Open the live demo <span class="ar" aria-hidden="true">&rarr;</span></a></div>
+      </div>
+      <div class="card rv d1">
+        <h3>Install it in five minutes</h3>
+        <p>Python 3.10 or later. Create a workspace, build the sample report, open it in the app.</p>
+        <div class="cmd"><code id="installCmd">git clone https://github.com/saltyscott0521/tracebi &amp;&amp; cd tracebi &amp;&amp; pip install -e ".[all]"</code><button type="button" id="copyBtn">Copy</button></div>
+        <div class="btns" style="margin-top:auto"><a class="btn" href="/docs/start/quickstart.html">Read the quickstart <span class="ar" aria-hidden="true">&rarr;</span></a></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="fgrid">
+      <a class="brand" href="#top" aria-label="TraceBi, back to top">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#1f3fff"/><g transform="translate(3 3) scale(1.3)" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"><circle cx="4" cy="15.5" r="2"/><path d="M5.85 14.73 L8.15 13.77 M11.1 11.3 L13.9 6.95"/><circle cx="10" cy="13" r="2"/><circle cx="15.5" cy="4.5" r="2.9" fill="#fff" stroke="none"/></g></svg>
+        TraceBi
+      </a>
+      <nav aria-label="Footer">
+        <a href="/app">Live demo</a>
+        <a href="/docs/">Docs</a>
+        <a href="/docs/start/quickstart.html">Quickstart</a>
+        <a href="/docs/start/plain-english.html">TraceBi in plain English</a>
+        <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+    </div>
+    <p class="fine">A note on scope: TraceBi’s guarantee starts where clean tables land, and it is a check that a number reproduces and a file is intact, not a proof that a number is correct. Every claim on this page is one the framework can stand behind. MIT licensed. Geist type, SIL Open Font License (<a href="/assets/fonts/Geist-OFL.txt">notice</a>).</p>
+  </div>
+</footer>
 
 <script>
 (function(){
-  var TRUE_VAL = "$285,904,445", TAMP_VAL = "$295,000,000";
-  var kpi=document.getElementById('kpiVal'), badge=document.getElementById('kpiBadge'),
-      verdict=document.getElementById('verdict'), hash=document.getElementById('hash'),
-      bV=document.getElementById('btnVerify'), bT=document.getElementById('btnTamper'), bR=document.getElementById('btnReset');
-  var tampered=false;
-  function setBadge(cls,txt){badge.className='badge '+cls;badge.textContent=txt;}
-  function show(el){el.hidden=false;} function hide(el){el.hidden=true;}
-  bT.addEventListener('click',function(){
-    tampered=true;
-    kpi.textContent=TAMP_VAL; kpi.classList.add('tampered');
-    hash.textContent='107b…2594 · 9862…0faf  (bytes changed)';
-    setBadge('b-stale','unverified');
-    hide(verdict); show(bR);
-    bT.disabled=true; bT.style.opacity=.5;
-  });
-  bV.addEventListener('click',function(){
-    if(tampered){
-      setBadge('b-alt','file altered');
-      verdict.className='verdict bad';
-      verdict.innerHTML='✕ FILE ALTERED — the displayed number no longer matches its fingerprint.<br>Caught offline, with no database and no account.';
-    }else{
-      setBadge('b-repro','reproduces');
-      verdict.className='verdict ok';
-      verdict.innerHTML='Illustration only — this button does not hash the page. tracebi verify --file is the check.';
-    }
-    show(verdict);
-  });
-  bR.addEventListener('click',function(){
-    tampered=false;
-    kpi.textContent=TRUE_VAL; kpi.classList.remove('tampered');
-    hash.textContent='107b…2594 · 9862…0faf';
-    setBadge('b-repro','reproduces');
-    hide(verdict); hide(bR);
-    bT.disabled=false; bT.style.opacity=1;
-  });
-})();
+  var root=document.documentElement;
+  var still=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ---- walkthrough stepper ---- */
-(function(){
-  var btns=[].slice.call(document.querySelectorAll('.step-btn'));
-  var panels=[].slice.call(document.querySelectorAll('.walk .step-panel'));
-  var prev=document.getElementById('walkPrev'), next=document.getElementById('walkNext');
-  if(!btns.length) return;
-  var i=0, n=panels.length;
-  function go(k){
-    i=Math.max(0,Math.min(n-1,k));
-    panels.forEach(function(p,j){p.hidden=(j!==i);});
-    btns.forEach(function(b,j){b.setAttribute('aria-current', j===i?'true':'false');});
-    prev.disabled=(i===0); prev.style.opacity=i===0?.45:1;
-    next.textContent = i===n-1 ? 'start over ↺' : 'next step →';
-  }
-  btns.forEach(function(b){b.addEventListener('click',function(){go(+b.dataset.step);});});
-  prev.addEventListener('click',function(){go(i-1);});
-  next.addEventListener('click',function(){go(i===n-1?0:i+1);});
-  go(0);
-})();
-
-/* ---- theme toggle (system default; explicit choice remembered) ---- */
-(function(){
-  var btn=document.getElementById('themeToggle');
-  if(!btn) return;
-  try{var saved=localStorage.getItem('tb-theme'); if(saved){document.documentElement.setAttribute('data-theme',saved);}}catch(e){}
-  function current(){
-    var set=document.documentElement.getAttribute('data-theme');
-    if(set) return set;
-    return (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light';
-  }
-  btn.addEventListener('click',function(){
+  /* ---- theme: system default, an explicit choice remembered ---- */
+  function current(){var s=root.getAttribute('data-theme');if(s)return s;return matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+  var tg=document.getElementById('themeToggle');
+  tg.addEventListener('click',function(e){
     var next=current()==='dark'?'light':'dark';
-    document.documentElement.setAttribute('data-theme',next);
-    try{localStorage.setItem('tb-theme',next);}catch(e){}
+    function apply(){root.setAttribute('data-theme',next);try{localStorage.setItem('tb-theme',next);}catch(x){}}
+    if(still){apply();return;}
+    if(document.startViewTransition){
+      var r=tg.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,
+          rad=Math.hypot(Math.max(x,innerWidth-x),Math.max(y,innerHeight-y));
+      var t=document.startViewTransition(apply);
+      t.ready.then(function(){
+        root.animate({clipPath:['circle(0px at '+x+'px '+y+'px)','circle('+rad+'px at '+x+'px '+y+'px)']},
+          {duration:550,easing:'cubic-bezier(.2,.7,.2,1)',pseudoElement:'::view-transition-new(root)'});
+      }).catch(function(){});
+    }else{root.classList.add('tswitch');apply();setTimeout(function(){root.classList.remove('tswitch');},400);}
+  });
+
+  /* ---- nav border once scrolled ---- */
+  var bar=document.getElementById('topbar');
+  addEventListener('scroll',function(){bar.classList.toggle('scrolled',scrollY>8);},{passive:true});
+
+  /* ---- reveal on scroll ---- */
+  var rv=[].slice.call(document.querySelectorAll('.rv,.paper'));
+  if(still||!('IntersectionObserver' in window)){rv.forEach(function(el){el.classList.add('in');});}
+  else{
+    var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{rootMargin:'0px 0px -8% 0px',threshold:.08});
+    rv.forEach(function(el){io.observe(el);});
+  }
+
+  /* ---- hero: walk the trace, step by step, while it is on screen ---- */
+  var ht=[].slice.call(document.querySelectorAll('#heroTrace li'));
+  if(still){ht.forEach(function(li){li.classList.add('done');});ht[ht.length-1].classList.add('on');}
+  else{
+    var hi=-1,timer=null,visible=true;
+    function tick(){
+      hi=(hi+1)%(ht.length+2);
+      ht.forEach(function(li,j){li.classList.toggle('on',j===hi);li.classList.toggle('done',j<hi);});
+      if(hi>=ht.length){ht.forEach(function(li){li.classList.add('done');li.classList.remove('on');});ht[ht.length-1].classList.add('on');}
+    }
+    function run(){if(!timer&&visible&&!document.hidden){timer=setInterval(tick,1300);}}
+    function stop(){clearInterval(timer);timer=null;}
+    new IntersectionObserver(function(es){visible=es[0].isIntersecting;visible?run():stop();}).observe(document.getElementById('stage'));
+    document.addEventListener('visibilitychange',function(){document.hidden?stop():run();});
+    tick();
+    addEventListener('load',function(){setTimeout(run,1200);});
+  }
+
+  /* ---- trace a number ---- */
+  var list=document.getElementById('steps5'),items=[].slice.call(list.children),
+      play=document.getElementById('tPlay'),tamper=document.getElementById('tTamper'),reset=document.getElementById('tReset'),
+      val=document.getElementById('tkVal'),chip=document.getElementById('tkChip'),verdict=document.getElementById('tVerdict');
+  var altered=false,playing=null,started=false;
+  function mark(k){items.forEach(function(li,j){li.classList.toggle('on',j===k);li.classList.toggle('done',j<k);});}
+  function finish(){
+    list.classList.remove('playing');clearTimeout(playing);playing=null;
+    items.forEach(function(li){li.classList.add('done');li.classList.remove('on');});items[items.length-1].classList.add('on');
+    items[items.length-1].classList.toggle('fail',altered);
+    verdict.hidden=false;
+    if(altered){chip.className='chip bad';chip.textContent='file altered';verdict.className='verdict bad';
+      verdict.textContent='FILE ALTERED: the number on the page no longer matches the fingerprint recorded when it was built. Caught offline, with no database.';}
+    else{chip.className='chip ok';chip.textContent='reproduces';verdict.className='verdict ok';
+      verdict.textContent='REPRODUCES: the same query against the same definition returns the same result as when the report was built.';}
+    play.textContent='↻ Trace it again';
+  }
+  function go(){
+    started=true;verdict.hidden=true;clearTimeout(playing);
+    if(still){finish();return;}
+    list.classList.add('playing');var k=0;
+    (function step(){mark(k);if(k<items.length-1){k++;playing=setTimeout(step,900);}else{playing=setTimeout(finish,700);}})();
+  }
+  play.addEventListener('click',go);
+  tamper.addEventListener('click',function(){
+    altered=true;val.textContent='$295.0M';val.classList.add('altered');chip.className='chip warn';chip.textContent='edited';
+    tamper.disabled=true;reset.hidden=false;verdict.hidden=true;play.textContent='▶ Check it';
+    items.forEach(function(li){li.classList.remove('on','done','fail');});
+  });
+  reset.addEventListener('click',function(){
+    altered=false;val.textContent='$285.9M';val.classList.remove('altered');chip.className='chip ok';chip.textContent='reproduces';
+    tamper.disabled=false;reset.hidden=true;verdict.hidden=true;play.textContent='▶ Trace it';
+    items.forEach(function(li){li.classList.remove('on','done','fail');});
+  });
+  if(!still&&'IntersectionObserver' in window){
+    var tio=new IntersectionObserver(function(es){if(es[0].isIntersecting&&!started){tio.disconnect();setTimeout(go,500);}},{threshold:.5});
+    tio.observe(list);
+  }
+
+  /* ---- before / after tabs ---- */
+  function tabs(btns){
+    btns.forEach(function(b,i){
+      b.addEventListener('click',function(){sel(i);});
+      b.addEventListener('keydown',function(e){
+        if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();var n=(i+(e.key==='ArrowRight'?1:-1)+btns.length)%btns.length;sel(n);btns[n].focus();}
+      });
+    });
+    function sel(i){btns.forEach(function(b,j){b.setAttribute('aria-selected',j===i?'true':'false');b.tabIndex=j===i?0:-1;
+      document.getElementById(b.getAttribute('aria-controls')).hidden=(j!==i);});}
+    sel(0);
+  }
+  tabs([document.getElementById('baAll'),document.getElementById('baSw')]);
+  tabs([document.getElementById('tt0'),document.getElementById('tt1'),document.getElementById('tt2')]);
+
+  /* ---- the live report, loaded only when asked ---- */
+  document.getElementById('liveBtn').addEventListener('click',function(){
+    var f=document.createElement('iframe');f.src='/sample/portfolio_showcase.html';f.title='The sample report, live';f.className='frame';
+    var box=document.getElementById('liveBox');box.innerHTML='';box.appendChild(f);
+    var a=document.createElement('p');a.className='small muted';a.style.marginTop='12px';
+    a.innerHTML='Pick a sector in the sidebar or click a bar. <a href="/sample/portfolio_showcase.html">Open it full screen</a>.';box.appendChild(a);
+  });
+
+  /* ---- copy the install command ---- */
+  var cb=document.getElementById('copyBtn');
+  cb.addEventListener('click',function(){
+    var t=document.getElementById('installCmd').textContent;
+    (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){cb.textContent='Copied';setTimeout(function(){cb.textContent='Copy';},1600);},function(){});
   });
 })();
 </script>
