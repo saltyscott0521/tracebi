@@ -167,7 +167,10 @@ phase to the next):
    against the tables just sunk. A failed check raises at sink time; success
    records `data/warehouse.contracts.json` with connector-load-path
    fingerprints. Report manifests join against it (`transform_contracts`:
-   `satisfied` / `stale` / `no_contract` — stale never reads green) and
+   `satisfied` / `stale` / `no_contract` — stale never reads green; each
+   entry also carries `writer`, the transform file, and `read`, what that run
+   read as every trace words it: `crm.issuer_ratings — snapshot
+   inputs/issuer_ratings.csv`, then the input files; `sources.run_reads`) and
    `tracebi verify --contracts` re-runs it. Locked language: **"the sink
    satisfied its contract"** — never "the transform was verified"; contract
    status never colors figure statuses.
@@ -1076,7 +1079,7 @@ Failed report/query runs return a structured ``detail``:
 - No migration framework for warehouse tables (layers are idempotent; the state store uses Alembic — `tracebi/migrations`)
 - No pre-commit hooks
 - No PyPI release (install is `pip install -e .` or from git)
-- No `PDFRenderer` class. A package PDF is a print of the built HTML via Playwright (`tracebi report build <name> --format pdf`, `pip install 'tracebi[pdf]'` and `python -m playwright install chromium`). `HTMLRenderer.render_pdf()` remains the WeasyPrint path for the legacy renderer; it runs no JavaScript, so a package's charts would print blank, and it is untested without weasyprint/libgobject.
+- No `PDFRenderer` class. A package PDF is a print of the built HTML via Playwright (`tracebi report build <name> --format pdf`, `pip install 'tracebi[pdf]'` and `python -m playwright install chromium`); its last pages are the trace printed as an appendix, "How these numbers were made" (one row per figure, the sink contracts, the build, the verify command; tracebi.css's print rules, `@page` margins on every page). `HTMLRenderer.render_pdf()` remains the WeasyPrint path for the legacy renderer; it runs no JavaScript, so a package's charts would print blank, and it is untested without weasyprint/libgobject.
 
 Don't add these unless asked.
 
