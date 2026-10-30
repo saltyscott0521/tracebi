@@ -459,7 +459,8 @@ tracebi connect <name> --kind postgres --host H --database D --user U --password
 tracebi connect <name> --test                   # test an existing connection
 
 # Tests
-pytest tests/                                  # Full suite (run it for the current count)
+python -m pytest tests/                        # Full suite (run it for the current count); tests/conftest.py puts this tree first
+                                               #   on PYTHONPATH so subprocesses import it, not the editable install's checkout
 pytest tests/test_phase1.py                    # Single phase
 pytest --cov                                   # With coverage
 TRACEBI_TEST_POSTGRES_URL=postgresql+psycopg://… pytest tests/e2e/test_reference_project.py
@@ -992,7 +993,7 @@ GET  /api/reports/{name}/built                       → the last build (disk, e
 GET  /api/reports/{name}/cover                       → PNG of the last build's first screen (ETag = its write time; 304); 404 when none (the app draws one); never builds; hidden as /built
 GET  /api/runs                                       → run rows (kind, target, limit); viewer may read
 GET  /api/runs/counts?kind=                          → [{kind, target, runs, failed}] per target the caller may see (History's "N older runs")
-GET  /api/desk[?fresh=1]                             → only reports the caller may view: pins, drafts, verdicts, builds (each with `values` [{id, label, text, delta, spark}], its KPIs as the built page printed them; the home draws no figure), sinks; each verdict/build row carries computed_at and cached: a verdict is kept while its manifest, the models it names and their warehouse (+ certificate) are unchanged (tracebi/desk.py; process-local; fresh re-runs all)
+GET  /api/desk[?fresh=1|quick=1]                     → only reports the caller may view: pins, drafts, verdicts, builds (each with `values` [{id, label, text, delta, spark}], its KPIs as the built page printed them; the home draws no figure), sinks; each verdict/build row carries computed_at and cached: a verdict is kept while its manifest, the models it names and their warehouse (+ certificate) are unchanged (tracebi/desk.py; in the process and in the state store's tracebi_verdicts, reused only when its inputs' digest matches; fresh re-runs all; quick re-runs none: the rest come back `pending` with the last answer, which the app shows as Checking, never green, then re-reads without quick)
 POST /mcp                                            → the agent gateway, when TRACEBI_MCP_TOKEN, TRACEBI_OIDC_ISSUER or the built-in sign-in is set (bearer; outside app auth)
 GET  /.well-known/oauth-*  /authorize /token /register /revoke /oauth/callback → per-person OAuth for /mcp (TRACEBI_OIDC_ISSUER, or the built-in TRACEBI_DEMO_LOGIN / TRACEBI_LOCAL_USERS; tracebi/mcp_oauth.py)
 GET  /api/reports/{name}/download?format=xlsx|html|pdf   → html/pdf: the last build; xlsx: rendered
