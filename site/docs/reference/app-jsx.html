@@ -162,7 +162,10 @@ tracebi report build sales_model/revenue_app
 </tbody>
 </table>
 <p>Any other import fails the build and names the list.</p>
-<p>Tailwind classes work everywhere, generated in the page. The TraceBi tokens
+<p>Tailwind classes work everywhere. The build writes the CSS for the classes
+app.jsx spells out (it reads the source's text, as Tailwind's CLI does), so
+write each class whole: <code>"text-good"</code> or <code>"text-bad"</code>, never <code>"text-" + tone</code>.
+The TraceBi tokens
 are Tailwind colours, so an app follows the page's mode and
 <code>reports/_theme.css</code>: <code>bg-page</code>, <code>bg-card</code>, <code>bg-surface</code>, <code>text-ink</code>,
 <code>text-muted</code>, <code>border-rule</code>, <code>bg-accent</code>, <code>text-accent-text</code>, <code>text-on-accent</code>,
@@ -330,6 +333,12 @@ in the runtime. Whether a
 chart is a checked figure follows its data, not who wrote it. It draws in the
 house look, from the page's chart tokens (<a href="../reference/chart-style.html">House themes and chart style</a>), so the workspace's
 brand reaches it; never hard-code a colour in its <code>option</code>.</p>
+<p>The page carries a tree-shaken ECharts: the series bar, line, scatter,
+effectScatter, pictorialBar, pie, funnel, treemap, sunburst, heatmap and
+sankey, with grid, tooltip, title, legend, dataZoom (the slider), brush,
+visualMap, markLine, markPoint, markArea, toolbox and aria, and both
+renderers. Another series type (radar, gauge, candlestick, graph, …) is not
+in it: ECharts draws nothing for it, and says nothing.</p>
 <pre><code class="language-jsx">&lt;EChart binding=&quot;by_sector&quot; type=&quot;treemap&quot; x=&quot;dim_issuer.sector&quot; y=&quot;fair_value&quot;
         format=&quot;currency_compact&quot; height={300} /&gt;
 </code></pre>
@@ -491,6 +500,17 @@ export default function App() {
   );
 }
 </code></pre>
+<h2 id="compiled-at-build">Compiled at build</h2>
+<p><code>tracebi report build</code> compiles <code>app.jsx</code> once: Sucrase turns its JSX into
+plain JavaScript and Tailwind's compiler writes the CSS for its classes, both
+run in an embedded V8 (<code>mini-racer</code>, in the <code>reports</code> extra), so no Node is
+needed. The page carries that script and that CSS, not a compiler or
+Tailwind, and JSX that does not parse fails the build with its line and
+column. The manifest records which way it went: <code>"app_compile": {"at":
+"build"}</code>, or, where the build cannot run them (mini-racer not installed),
+<code>{"at": "page", "reason": …}</code>, and the page carries the source, Sucrase and
+Tailwind's browser build and compiles itself in the reader's browser, as it
+did before.</p>
 <h2 id="without-javascript">Without JavaScript</h2>
 <p>An email preview or a phone's file viewer runs no script. The build writes
 the kit figures into the app's mount point as a static view (labelled KPIs,

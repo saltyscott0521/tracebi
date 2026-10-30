@@ -1,9 +1,9 @@
 """
 The React lane: a report package whose page is an ``app.jsx`` component.
 
-The page is a React app compiled in the browser from TraceBi's fixed kit
-(React, Recharts, ECharts, lucide-react, Tailwind and the ``tracebi`` module); there is
-no Node and no server. The data is the same: ``report.json`` bindings stamped
+The page is a React app built from TraceBi's fixed kit (React, Recharts,
+ECharts, lucide-react, Tailwind and the ``tracebi`` module), compiled once at
+build in an embedded V8 (:func:`compile_app`); there is no Node and no server. The data is the same: ``report.json`` bindings stamped
 and fingerprinted at build. What changes is how the page is written.
 
 Numbers keep their receipts when they are shown through the kit's figure
@@ -20,6 +20,7 @@ The attribute names and figure ids here mirror ``assets/_react_src/kit.jsx``.
 
 from __future__ import annotations
 
+import functools
 import html
 import json
 import os
@@ -111,7 +112,7 @@ _MASTHEAD_TITLE = re.compile(
 def lint_jsx_numbers(src: str) -> int:
     """Count numbers typed into the app's JSX text, outside every kit figure.
 
-    The app's prose is compiled in the browser, so the page's own check never
+    The app's prose is drawn by the app, so the page's own check never
     sees it; this is the same rule for app.jsx: a number a reader might act on
     is a <Value> (or a <Kpi>), never typed. A text run that reads like code
     (``=``, ``;``, ``?``, ``&``, ``|``) is skipped rather than guessed at."""
@@ -460,19 +461,28 @@ def shell_html(title: str, figs: list[KitFigure], look: dict | None = None) -> s
         "<div id=\"tb-app\">\n" + static_html(figs) + "</div>\n</body></html>\n")
 
 
-def app_blocks_html(source: str, icons: dict) -> str:
-    """The app source and its icons, as JSON data blocks (never as markup:
-    script contents are not un-escaped, so the source rides as a string)."""
+def app_blocks_html(source: str, icons: dict, compiled_js: str | None = None) -> str:
+    """The app and its icons. Compiled at build (*compiled_js*), the app is a
+    plain script defining ``window.__tbApp``; otherwise its source rides as a
+    JSON data block for the page to compile (never as markup: script contents
+    are not un-escaped, so the source rides as a string)."""
     def block(obj, bid):
         text = json.dumps(obj, ensure_ascii=False).replace("</", "<\\/")
         return f'<script type="application/json" id="{bid}">{text}</script>\n'
-    out = block(source, "tracebi-app")
+    if compiled_js is not None:
+        # "</script" cannot end the script early: in JavaScript "<\/" reads
+        # as "</" in a string, a template or a regular expression alike.
+        code = re.sub(r"</(script)", r"<\\/\1", compiled_js, flags=re.I)
+        out = ('<script id="tracebi-app">window.__tbApp=function(module,exports,require){\n'
+               f"{code}\n}};</script>\n")
+    else:
+        out = block(source, "tracebi-app")
     if icons:
         out += block(icons, "tracebi-icons")
     return out
 
 
-def libs_for(imports: dict[str, list[str]]) -> list[str]:
+def libs_for(imports: dict[str, list[str]], compiled: bool = True) -> list[str]:
     """The vendored bundles a page needs, in load order.
 
     The kit's one runtime is TanStack Redact (``react``). ECharts
@@ -481,9 +491,14 @@ def libs_for(imports: dict[str, list[str]]) -> list[str]:
     ``EChart``, or all of ``tracebi`` with ``*``): it never imports React,
     and the runtime registers it as the ``echarts`` module. Recharts 2
     (``recharts``) rides after it and shares the runtime's React.
+
+    An app the build compiled (:func:`compile_app`) needs nothing else. One
+    it could not compile also carries Tailwind's browser build
+    (``tailwind``) and the app.jsx compiler (``sucrase``), which do that work
+    in the page.
     """
     tracebi = imports.get("tracebi") or []
-    libs = ["tailwind"]
+    libs = [] if compiled else ["tailwind", "sucrase"]
     if "echarts" in imports or "*" in tracebi or any(
             name in tracebi for name in ("Chart", "Spark", "EChart")):
         libs.append("echarts-kit")
@@ -491,3 +506,85 @@ def libs_for(imports: dict[str, list[str]]) -> list[str]:
     if "recharts" in imports:
         libs.append("recharts")
     return libs
+
+
+# ── Compiled at build ──────────────────────────────────────────────────────
+
+#: Where a token of the source ends, for Tailwind: its own rule, which reads
+#: a source's text and never runs it. A class name assembled at run time from
+#: pieces is not seen, as with Tailwind's CLI; write each class whole.
+_CANDIDATE_SPLIT = re.compile(r"[\s\"'`{};]+")
+
+
+def tailwind_candidates(source: str) -> list[str]:
+    """Every token of *source* that may be a class name. Tailwind ignores
+    the ones that are not, so a word in prose costs nothing."""
+    return sorted({t for t in _CANDIDATE_SPLIT.split(source) if t})
+
+
+@dataclass(frozen=True)
+class CompiledApp:
+    """An app.jsx as the build ships it. *js* and *css* are None when the
+    build could not compile it, and the page does that work instead."""
+    js: str | None
+    css: str | None
+    #: The manifest's ``app_compile``: ``{"at": "build", "by": [...]}``, or
+    #: ``{"at": "page", "reason": ...}``.
+    record: dict
+
+
+def _no_engine_reason() -> str | None:
+    try:
+        import py_mini_racer  # noqa: F401
+    except ImportError:
+        return ("mini-racer is not installed (pip install 'tracebi[reports]'), so "
+                "app.jsx is compiled in the page and Tailwind runs there")
+    return None
+
+
+@functools.lru_cache(maxsize=32)
+def compile_app(source: str) -> CompiledApp:
+    """Compile app.jsx once, at build: Sucrase turns its JSX into plain
+    JavaScript and Tailwind's compiler writes the CSS for the classes its
+    source names, both run in an embedded V8 (mini-racer), so no Node is
+    needed. The compilers are the vendored ``sucrase.min.js`` (the same one
+    a page that could not be compiled at build runs) and
+    ``tailwind-compiler.min.js``. A syntax error fails the build."""
+    from tracebi.reports.embed import read_lib
+    from tracebi.reports.stack import TAILWIND_THEME, _lib_credit
+
+    reason = _no_engine_reason()
+    if reason:
+        return CompiledApp(None, None, {"at": "page", "reason": reason})
+    from py_mini_racer import MiniRacer
+
+    # A context per compile, closed when done: an open one keeps the
+    # interpreter from exiting.
+    with MiniRacer() as engine:
+        engine.eval(read_lib("sucrase"))
+        engine.eval(read_lib("tailwind-compiler"))
+        try:
+            js = engine.eval(f"__tbSucrase.compile({json.dumps(source)})")
+        except Exception as exc:
+            raise AppError(f"{APP_JSX} does not compile: {_js_error(exc)}") from None
+        engine.eval(f"__tbTailwind.build({json.dumps(TAILWIND_INPUT + TAILWIND_THEME)}, "
+                    f"{json.dumps(tailwind_candidates(source))})")
+        css, error = engine.eval("__tbTailwind.result"), engine.eval("__tbTailwind.error")
+    if not isinstance(css, str):
+        raise AppError(f"{APP_JSX}: Tailwind could not build its classes: {error}")
+    return CompiledApp(js, css, {"at": "build", "by": [_lib_credit("sucrase"),
+                                                       _lib_credit("tailwind-compiler")]})
+
+
+#: What the browser build compiles before the page's own Tailwind blocks.
+TAILWIND_INPUT = '@import "tailwindcss";\n'
+
+
+def _js_error(exc: Exception) -> str:
+    """The compiler's own message, "Unexpected token (12:4)" (line:column),
+    without the engine's location and stack."""
+    text = str(exc).strip()
+    first = text.splitlines()[0] if text else type(exc).__name__
+    first = re.sub(r"^<anonymous>:\d+:\s*", "", first)
+    first = re.sub(r"^(?:Uncaught\s+)?\w*Error:\s*", "", first)
+    return first.replace(f"Error transforming {APP_JSX}: ", "")

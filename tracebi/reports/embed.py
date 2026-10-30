@@ -77,7 +77,7 @@ def csp_meta() -> str:
 
 
 #: How a vendored bundle is rebuilt: d3 from web/ui, every other ``.min.js``
-#: (echarts-kit, react, recharts, tailwind) from the kit's sources
+#: (echarts-kit, react, recharts, sucrase, tailwind, tailwind-compiler) from the kit's sources
 #: (REACT_NOTICE.md). The page engine, tracebi-calc.js, is _calc_src's.
 _REBUILD_D3 = "cd web/ui && npm ci && npm run build:d3"
 _REBUILD_KIT = "cd tracebi/reports/assets/_react_src && npm ci && npm run build"

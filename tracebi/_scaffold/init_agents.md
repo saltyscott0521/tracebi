@@ -133,9 +133,11 @@ and anything written at volume without review. `app.jsx` instead of
 drawers, drill-downs, toggles): a component (`export default`) built from a
 fixed kit — `react`, `echarts`, `recharts` (Recharts 2, which also
 works), `lucide-react` (import icons by name),
-Tailwind classes (`bg-card text-ink border-rule` follow the page's tokens)
-and the `tracebi` module. No other import builds; it is still one offline
-file. Show numbers through the kit — `<Kpi binding cell format label lead>`,
+Tailwind classes (`bg-card text-ink border-rule` follow the page's tokens;
+the build writes the CSS for the classes app.jsx spells out, so write each
+class whole, never `"text-" + tone`) and the `tracebi` module. No other
+import builds, and JSX that does not parse fails the build: the page is
+compiled once, at build, and is still one offline file. Show numbers through the kit — `<Kpi binding cell format label lead>`,
 `<Value>`, `<Chart binding type x y>`, `<Spark>`, `<Table binding>`, with
 `<Filter>`, `<Search>`, `<Download>` — and give `binding`, `cell`, `x`, `y`
 literal strings: the build reads them as claims and refuses a binding or
@@ -156,7 +158,10 @@ column). `option={…}` (an ECharts option, or a function of the rows)
 deep-merges on top to style it; it cannot replace the binding's numbers.
 An `<EChart option={…}>` alone draws numbers the page computed: it carries
 `data-tb-computed` and is the app's presentation, not a checked figure, and
-the page's footer says so. Every chart is live: its rows are its binding's
+the page's footer says so. The page's ECharts draws bar, line, scatter,
+effectScatter, pictorialBar, pie, funnel, treemap, sunburst, heatmap and
+sankey series (with legend, dataZoom, brush, visualMap, markArea, toolbox);
+any other series type is not in it. Every chart is live: its rows are its binding's
 query re-run under the page's selection, and a click on a mark selects its
 `x` value (`selects="dim.col"` on an option-only chart; shift adds), its own
 field's other values kept and dimmed (`highlight="off"` narrows instead).

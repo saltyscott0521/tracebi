@@ -118,12 +118,44 @@ def test_a_style_css_token_gives_way_to_the_dark_ground(browser, tmp_path):
 
 
 def test_an_echart_page_ships_echarts_and_a_plain_page_nothing_extra():
-    """One runtime (Redact) for every page; ECharts (~0.9 MB) only on a page
+    """One runtime (Redact) for every page; ECharts (~0.8 MB) only on a page
     that draws a chart (<Chart>, <Spark>, <EChart>) or imports echarts, before
-    the runtime that registers it, and Recharts only on a page that imports it."""
+    the runtime that registers it, and Recharts only on a page that imports it.
+    Tailwind's browser build and the JSX compiler ride only on a page the
+    build could not compile."""
     from tracebi.reports.app_lane import libs_for
-    assert libs_for({"react": ["useState"], "tracebi": ["Kpi"]}) == ["tailwind", "react"]
-    assert libs_for({"tracebi": ["Kpi", "EChart"]}) == ["tailwind", "echarts-kit", "react"]
-    assert libs_for({"tracebi": ["Spark"]}) == ["tailwind", "echarts-kit", "react"]
-    assert libs_for({"echarts": ["*"]}) == ["tailwind", "echarts-kit", "react"]
-    assert libs_for({"recharts": ["BarChart"]}) == ["tailwind", "react", "recharts"]
+    assert libs_for({"react": ["useState"], "tracebi": ["Kpi"]}) == ["react"]
+    assert libs_for({"tracebi": ["Kpi", "EChart"]}) == ["echarts-kit", "react"]
+    assert libs_for({"tracebi": ["Spark"]}) == ["echarts-kit", "react"]
+    assert libs_for({"echarts": ["*"]}) == ["echarts-kit", "react"]
+    assert libs_for({"recharts": ["BarChart"]}) == ["react", "recharts"]
+    assert libs_for({"tracebi": ["Kpi"]}, compiled=False) == ["tailwind", "sucrase", "react"]
+
+
+def test_where_the_build_cannot_compile_the_page_does(browser, tmp_path, monkeypatch):
+    """With no embedded engine (mini-racer has no wheel for the platform), the
+    build ships the source, Sucrase and Tailwind's browser build, says so in
+    the manifest, and the page compiles and runs the same app: its utility
+    classes apply and its figures fill."""
+    from tracebi.reports import app_lane
+    monkeypatch.setattr(app_lane, "_no_engine_reason", lambda: "no engine here")
+    app_lane.compile_app.cache_clear()
+    try:
+        out = _build(tmp_path, _APP.replace('<div className="tb-grid">',
+                                            '<div className="tb-grid flex">'))
+    finally:
+        app_lane.compile_app.cache_clear()
+    manifest = json.loads(Path(str(out) + ".manifest.json").read_text())
+    assert manifest["app_compile"] == {"at": "page", "reason": "no engine here"}
+    built = out.read_text()
+    assert 'type="text/tailwindcss"' in built and "TraceBi-credit: Sucrase" in built
+    page = browser.new_page()
+    errors = []
+    page.on("pageerror", lambda e: errors.append(str(e)))
+    page.goto(out.as_uri())
+    page.wait_for_selector("#own")
+    assert page.locator("#own").text_content() == "3 regions"
+    assert page.locator(".tb-kpi-value").text_content() == "$5,251"
+    page.wait_for_function(
+        "() => getComputedStyle(document.querySelector('.tb-grid')).display === 'flex'")
+    assert errors == []

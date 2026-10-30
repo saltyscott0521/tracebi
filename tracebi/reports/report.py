@@ -615,6 +615,13 @@ class ReportManifest:
     #: trace: nothing fingerprints it and ``verify`` never reads it. None
     #: (omitted) when no cover was taken.
     cover: Optional[str] = None
+    #: Where an app.jsx page was compiled (``tracebi/reports/app_lane.py``
+    #: ``compile_app``): ``{"at": "build", "by": [the compilers]}``, the
+    #: JSX turned into JavaScript and the Tailwind CSS generated once, at
+    #: build; or ``{"at": "page", "reason": ...}``, the page doing both in
+    #: the reader's browser because the build could not. None (omitted) on
+    #: every page without an app.jsx.
+    app_compile: Optional[dict] = None
     #: Why no cover was taken, for the build command's one line. Never
     #: written to the manifest: it describes this machine, not the build.
     cover_skipped: Optional[str] = field(default=None, repr=False)
@@ -653,6 +660,8 @@ class ReportManifest:
             d["plans"] = self.plans
         if self.cover is not None:
             d["cover"] = self.cover
+        if self.app_compile is not None:
+            d["app_compile"] = self.app_compile
         return d
 
     def to_json(self, indent: int = 2) -> str:

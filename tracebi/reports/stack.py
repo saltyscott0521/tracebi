@@ -150,19 +150,20 @@ def figures_config(figures, output_names, badges: bool = True) -> list[dict]:
 
 
 _LIB_ROLE = {
-    "react": "runs this page's app (app.jsx), compiled in the page",
+    "react": "runs this page's app (app.jsx)",
+    "sucrase": "compiles this page's app (app.jsx) in the page: the build could not",
     "recharts": "the app's own charts (Recharts)",
     "echarts-kit": "draws the charts",
     "d3": "the report's own drawings (tracebi.draw)",
-    "tailwind": "the app's utility classes, generated in the page",
+    "tailwind": "the app's utility classes, generated in the page: the build could not",
+    "tailwind-compiler": "the app's utility classes, generated at build: only the CSS is here",
 }
 
-#: Before Tailwind's browser build: the TraceBi tokens as Tailwind theme
-#: colours (bg-card, text-ink, border-rule, …), so an app follows the page's
-#: mode and the project theme; and its "not for production" console notice
-#: muted — the page is offline by design, and that is the build it needs.
-_TAILWIND_PRELUDE = '''<style type="text/tailwindcss">
-@theme inline {
+#: The TraceBi tokens as Tailwind theme colours (bg-card, text-ink,
+#: border-rule, …), so an app follows the page's mode and the project theme.
+#: Compiled at build after Tailwind's own stylesheets (app_lane.compile_app),
+#: or handed to the browser build on a page the build could not compile.
+TAILWIND_THEME = '''@theme inline {
   --font-sans: var(--tb-font);
   --font-mono: var(--tb-mono);
   --color-ink: var(--tb-ink);
@@ -186,7 +187,12 @@ _TAILWIND_PRELUDE = '''<style type="text/tailwindcss">
   --color-chart-8: var(--tb-chart-8);
   --radius-panel: var(--tb-radius);
 }
-</style>
+'''
+
+#: Before Tailwind's browser build (a page the build could not compile): the
+#: theme, and its "not for production" console notice muted — the page is
+#: offline by design, and that is the build it needs.
+_TAILWIND_PRELUDE = '<style type="text/tailwindcss">\n' + TAILWIND_THEME + '''</style>
 <script>(function(){var w=console.warn;console.warn=function(m){
 if(typeof m==="string"&&m.indexOf("browser build of Tailwind")!==-1)return;
 return w.apply(console,arguments);};})();</script>
@@ -238,7 +244,7 @@ def libraries_comment(libs, brand: bool = False, mono: bool = False) -> str:
 def stack_head(stage: Optional[str] = None, project_css: str = "",
                report_css: str = "", include_csp: bool = True,
                libs=None, app: bool = False, theme_css: str = "",
-               brand_css: str = "", house_css: str = "") -> str:
+               brand_css: str = "", house_css: str = "", app_css: str = "") -> str:
     """The head injection, in override order (later wins).
 
     On an app page (app.jsx) tracebi.css goes in a cascade layer between
@@ -251,9 +257,15 @@ def stack_head(stage: Optional[str] = None, project_css: str = "",
     comes right after tracebi.css, unlayered: it re-states the dark ground's
     palette, so it wins over the repeated mode tokens by order. The house
     theme sits between them, unlayered too: its dark blocks win over the
-    repeated ones by order, and the brand's colours win over its own."""
+    repeated ones by order, and the brand's colours win over its own.
+
+    *app_css* is the Tailwind CSS the build generated for an app's classes
+    (app_lane.compile_app). It ends the head, where Tailwind's browser build
+    put its own: its rules are in Tailwind's layers, so order does not let it
+    beat the unlayered theme or style.css."""
     head = csp_meta() if include_csp else ""
-    head += libraries_comment(libs, brand=bool(brand_css.strip()),
+    credited = list(libs or ()) + (["tailwind-compiler"] if app_css.strip() else [])
+    head += libraries_comment(credited, brand=bool(brand_css.strip()),
                               mono="Geist Mono" in house_css)
     if stage:
         head += f'<meta name="tracebi-stage" content="{stage}">\n'
@@ -283,6 +295,9 @@ def stack_head(stage: Optional[str] = None, project_css: str = "",
     if report_css.strip():
         head += ("<!-- style.css: this report's own styles -->\n"
                  f"<style>\n{report_css}\n</style>\n")
+    if app_css.strip():
+        head += ("<!-- the Tailwind utilities app.jsx uses, generated at build -->\n"
+                 f"<style>\n{app_css}\n</style>\n")
     return head
 
 
@@ -346,7 +361,8 @@ def apply_stack(page: str, *, libs, data_blocks_html: str,
                 report_css: str = "", figures_cfg: Optional[dict] = None,
                 report_js: str = "", app: bool = False, theme_css: str = "",
                 brand_css: str = "", default_mode: str = "auto",
-                house_css: str = "", default_density: Optional[str] = None) -> str:
+                house_css: str = "", default_density: Optional[str] = None,
+                app_css: str = "") -> str:
     """Inject the full stack into *page* (loud on missing head/body tags)."""
     page = with_default_mode(page, default_mode, default_density)
     # A phone lays out a page that names no viewport 980px wide and shrinks
@@ -364,7 +380,7 @@ def apply_stack(page: str, *, libs, data_blocks_html: str,
         viewport + stack_head(stage, project_css, report_css,
                               include_csp=csp_meta().strip() not in page, libs=libs,
                               app=app, theme_css=theme_css, brand_css=brand_css,
-                              house_css=house_css))
+                              house_css=house_css, app_css=app_css))
     page = insert_before(page, "</body>",
                          stack_tail(libs, data_blocks_html, figures_cfg,
                                     report_js))

@@ -329,8 +329,9 @@ def _presentation() -> dict:
         },
         "app": {
             "what": "The React lane: app.jsx in place of template.html, for app-like "
-                    "dashboards. One component (export default), compiled in the page from "
-                    "a fixed kit; still one offline file with its trace.",
+                    "dashboards. One component (export default) from a fixed kit, compiled "
+                    "once at build (JSX that does not parse fails the build); still one "
+                    "offline file with its trace.",
             "imports": "react, react-dom, echarts (the ECharts module, for echarts.graphic "
                        "and the like), recharts (Recharts 2: also works), lucide-react (icons "
                        "by name; only those are embedded), tracebi. Any other import fails "
@@ -346,7 +347,10 @@ def _presentation() -> dict:
                      "ECharts option, or a function of the rows) deep-merges on top and "
                      "cannot replace the binding's numbers; an <EChart option={...}> alone "
                      "draws numbers the page computed, carries data-tb-computed and is not "
-                     "a checked figure. Every chart is live: its rows are its binding's "
+                     "a checked figure. The page's ECharts draws bar, line, scatter, "
+                     "effectScatter, pictorialBar, pie, funnel, treemap, sunburst, heatmap "
+                     "and sankey series (with legend, dataZoom, brush, visualMap, markArea, "
+                     "toolbox); any other series type is not in it. Every chart is live: its rows are its binding's "
                      "query re-run under the selection, and a click on a mark selects its "
                      "x value (selects=\"dim.col\" on an option-only chart; shift adds), "
                      "its own field's other values dimmed (highlight=\"off\" narrows). "
@@ -395,7 +399,9 @@ def _presentation() -> dict:
             "styling": "Tailwind classes, with the TraceBi tokens as colours (bg-page, "
                        "bg-card, bg-surface, text-ink, text-muted, border-rule, bg-accent "
                        "with text-on-accent, "
-                       "text-good, text-bad, chart-1..8) and the kit's tb-* classes.",
+                       "text-good, text-bad, chart-1..8) and the kit's tb-* classes. The "
+                       "build writes the CSS for the classes app.jsx spells out: write each "
+                       "class whole, never assembled (\"text-\" + tone).",
             "when": "app.jsx for dashboards people work in; template.html for briefs, "
                     "long-form, emailed and printed pages (they read with JavaScript off).",
             "scaffold": "tracebi new-dashboard \"Name\" [--model NAME] writes a dashboard "
