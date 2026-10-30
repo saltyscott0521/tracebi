@@ -759,7 +759,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.get_by_role("tab", name="Trace").click()
             page.get_by_role("button", name="Check again").wait_for()
             receipt = page.frame_locator("iframe.rpanel__receipt")
-            receipt.get_by_text("How each number was made").wait_for()
+            receipt.get_by_text("How these numbers were made").wait_for()
             receipt.get_by_text("This page does not claim the numbers are right", exact=False).wait_for()
             receipt.locator("summary", has_text="About this build").click()
             receipt.get_by_text("fact_holdings: the sink satisfied its contract").wait_for()
