@@ -126,16 +126,30 @@ def read_by(name: str, used_by: list[str], reads: dict[str, dict], runners: list
 
 def inputs_listing() -> dict:
     """The ``inputs/`` folder as the Sources page lists it: each file with its
-    size, when it last changed, and the transforms that name it."""
+    size, when it last changed, the transforms that name it, and the scripts
+    beside it in ``inputs/`` that name it (``named_by_scripts``: a seed or
+    fetch script's raw material, such as the CSV a seed script loads into a
+    SQLite file, or what it writes). Read as text, as the transforms are: a
+    pointer for a person, never a claim the trust machinery leans on."""
     reads = transform_reads()
+    found = _input_files()
+    scripts = {}
+    for shown, path in found.items():
+        if path.suffix in (".py", ".sql"):
+            try:
+                scripts[shown] = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
     files = []
-    for shown, path in _input_files().items():
+    for shown, path in found.items():
         stat = path.stat()
+        named = re.compile(r"""["'/]""" + re.escape(path.name) + r"""["']""")
         files.append({
             "path": shown,
             "size": stat.st_size,
             "modified": datetime.fromtimestamp(stat.st_mtime, timezone.utc).isoformat(),
             "read_by": [t for t, r in reads.items() if shown in r["inputs"]],
+            "named_by_scripts": [s for s, text in scripts.items() if s != shown and named.search(text)],
         })
     return {"folder": "inputs", "exists": inputs_dir().is_dir(), "files": files}
 
@@ -434,6 +448,7 @@ def transforms_listing(registry, whs: Optional[list[dict]] = None) -> list[dict]
     if not tdir.is_dir():
         return []
     files = [p for p in sorted(tdir.iterdir()) if p.suffix in FORMS and p.is_file()]
+    owners = _contract_owners()
 
     runs: dict[str, list[tuple[str, list[str]]]] = {}   # transform → [(pipeline, models)]
     for name in registry.list_pipeline_names():
@@ -478,6 +493,16 @@ def transforms_listing(registry, whs: Optional[list[dict]] = None) -> list[dict]
                 declared = None
         pipelines = runs.get(name, [])
         models = [m for _, ms in pipelines for m in ms] + written["models"]
+        # The other form of a transform: a Python file whose `with contract`
+        # names a record another transform's contract file owns (the pandas
+        # twin of a SQL transform). That one is what a pipeline runs.
+        twin = None
+        if path.suffix != ".sql" and not written["tables"]:
+            try:
+                records = _CONTRACT_NAME.findall(path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError):
+                records = []
+            twin = next((owners[r] for r in records if owners.get(r) not in (None, name)), None)
         out.append({
             "name": name,
             "form": transform_form(path),
@@ -488,5 +513,6 @@ def transforms_listing(registry, whs: Optional[list[dict]] = None) -> list[dict]
             "models": list(dict.fromkeys(models)),
             "tables": sorted(set(written["tables"])),
             "written_at": written["at"],
+            "twin_of": twin,
         })
     return out

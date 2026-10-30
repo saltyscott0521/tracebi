@@ -38,7 +38,7 @@ tracebi connect crm --kind postgres  # connections/crm.yaml (secret to .env, or 
 tracebi new-transform "Sales"        # transforms/sales.sql + sales.contract.yaml
 tracebi new-model "Sales Model"      # models/sales_model.yaml
 tracebi new-pipeline "Sales ETL"     # pipelines/sales_etl.yaml
-tracebi new-dashboard "Weekly"       # reports/weekly/ (report.json + app.jsx)
+tracebi new-dashboard "Weekly"       # reports/sales_model/weekly/ (report.json + app.jsx; --model with several models)
 tracebi new-report "Weekly Report"   # reports/weekly_report/ (report.json + template.html)
 ```
 

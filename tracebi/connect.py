@@ -15,6 +15,7 @@ This module never loads ``.env``.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
@@ -640,9 +641,12 @@ def _bigquery_body(name: str) -> str:
 
 
 def draft_model_command(args) -> int:
-    """Draft ``models/<slug>.py`` from ``column_schema`` of the named tables.
+    """Draft ``models/<slug>.yaml`` (``--python``: ``.py``) from
+    ``column_schema`` of the named tables.
 
-    No table scan. Guessed lines are marked ``# DRAFT: review``.
+    No table scan. Guessed lines are marked ``# DRAFT: review``. A connection
+    that is the workspace's own warehouse file is written ``type: warehouse``,
+    as the reference models are; any other, ``connection: <name>``.
     """
     from tracebi.cli import _slugify
 
@@ -685,7 +689,8 @@ def draft_model_command(args) -> int:
         return 1
 
     slug = _slugify(args.title)
-    out_path = models_dir / f"{slug}.py"
+    python = bool(getattr(args, "python", False))
+    out_path = models_dir / f"{slug}.{'py' if python else 'yaml'}"
     if out_path.exists() and not args.force:
         print(
             f"refusing to overwrite existing {out_path}; pass --force to replace",
@@ -698,17 +703,44 @@ def draft_model_command(args) -> int:
         return 1
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(
-        _model_source(args.title, slug, connection, _classify(schemas),
-                      declared=conn_path.suffix != ".py"),
-        encoding="utf-8",
-    )
+    warehouse = False
+    if python:
+        text = _model_source(args.title, slug, connection, _classify(schemas),
+                             declared=conn_path.suffix != ".py")
+    else:
+        warehouse = _is_workspace_warehouse(conn_path, Path.cwd())
+        text = _model_yaml(args.title, slug, connection, _classify(schemas), warehouse)
+    out_path.write_text(text, encoding="utf-8")
     print(f"Created {out_path}")
+    if not python:
+        print("  It reads " + ("the workspace's warehouse (type: warehouse)." if warehouse
+                               else f"connection {connection!r} (connection: {connection})."))
     print("  Lines marked # DRAFT: review are guesses — edit and approve them.")
     print("  Edit the file, then use it with:")
     print("    from tracebi.model_registry import get_model")
     print(f'    model = get_model("{slug}")')
     return 0
+
+
+def _is_workspace_warehouse(conn_path: Path, root: Path) -> bool:
+    """A declared DuckDB connection whose file is the workspace's file-tier
+    warehouse (``tracebi init`` writes ``connections/warehouse.yaml`` so)."""
+    if conn_path.suffix == ".py":
+        return False
+    try:
+        from tracebi.connections import read_connection_doc
+        from tracebi.project_config import warehouse
+
+        doc = read_connection_doc(conn_path)
+        wh = warehouse(str(root))
+    except Exception:  # noqa: BLE001 — unreadable: not provably the warehouse
+        return False
+    if not isinstance(doc, dict) or doc.get("type") != "duckdb" or wh.tier != "file":
+        return False
+    database = doc.get("database")
+    if not isinstance(database, str) or "${" in database:
+        return False
+    return os.path.abspath(os.path.join(str(root), database)) == wh.address
 
 
 def _find_connection(models_dir: Path, name: str) -> "Path | None":
@@ -854,6 +886,94 @@ def _classify(schemas: dict[str, list[dict]]) -> list[dict]:
             "fact": fact,
         })
     return drafts
+
+
+def _y(value: str) -> str:
+    """A YAML scalar: bare when it is a plain name YAML reads as a string,
+    else JSON-quoted (a column named ``on`` or ``null`` is not a bool)."""
+    plain = _NAME.fullmatch(value) and value.lower() not in _YAML_WORDS
+    return value if plain else json.dumps(value)
+
+
+_YAML_WORDS = {"y", "n", "yes", "no", "on", "off", "true", "false", "null"}
+
+
+def _model_yaml(title: str, slug: str, connection: str, drafts: list[dict],
+                warehouse: bool) -> str:
+    """The draft :func:`_model_source` writes, in the model file's YAML form."""
+    heading = title.strip() or slug
+    conn = "warehouse" if warehouse else connection
+    lines = [
+        f"# {heading}",
+        "#",
+        f"# Drafted by `tracebi new-model --from {connection}` on {date.today().isoformat()}.",
+        "# Lines marked `# DRAFT: review` are guesses from column metadata (no rows",
+        "# were read). Edit and approve them before a report depends on this model.",
+        "#",
+        "#     from tracebi.model_registry import get_model",
+        f'#     model = get_model("{slug}")',
+        "",
+        f"name: {slug}",
+        f"label: {json.dumps(heading)}",
+        "",
+        "connectors:",
+        f"  - name: {_y(conn)}",
+        "    type: warehouse" if warehouse else f"    connection: {_y(connection)}",
+        "",
+        "tables:",
+    ]
+    for draft in drafts:
+        lines += [f"  - name: {_y(draft['table'])}", f"    connector: {_y(conn)}",
+                  f"    source: {_y(draft['table'])}"]
+    dim_of = {d["table"]: _dim_name(d["table"]) for d in drafts if not d["fact"]}
+    dims = [d for d in drafts if not d["fact"]]
+    facts = [d for d in drafts if d["fact"]]
+    if dims:
+        lines += ["", "dimensions:"]
+    for draft in dims:
+        key = draft["own_key"] or draft["columns"][0]["name"]
+        attrs = [col["name"] for col in draft["columns"] if col["name"] != key]
+        lines += ["  # DRAFT: review", f"  - name: {_y(dim_of[draft['table']])}",
+                  f"    table: {_y(draft['table'])}", f"    key: {_y(key)}",
+                  f"    attributes: [{', '.join(_y(a) for a in attrs)}]"]
+    if facts:
+        lines += ["", "facts:"]
+    for draft in facts:
+        measures = [col for col in draft["numeric"] if _summable(col)]
+        fks = {dim_of[other]: col for col, other, _right in draft["fks"] if other in dim_of}
+        lines += ["  # DRAFT: review", f"  - name: {_y(draft['table'])}",
+                  f"    table: {_y(draft['table'])}",
+                  f"    measures: [{', '.join(_y(m) for m in measures)}]"]
+        if fks:
+            lines.append("    foreign_keys:")
+            lines += [f"      {_y(dim)}: {_y(col)}" for dim, col in fks.items()]
+        for col in draft["numeric"]:
+            if col not in measures:
+                lines.append(f"    # DRAFT: review — {col!r} looks like a rate or a stock, "
+                             "so it is not a sum")
+    rels = [(d, col, other, right) for d in drafts for col, other, right in d["fks"]]
+    if rels:
+        lines += ["", "relationships:"]
+    for draft, col, other, right_key in rels:
+        lines += ["  # DRAFT: review", f"  - name: {_y(draft['table'] + '__' + col)}",
+                  f"    left_table: {_y(draft['table'])}", f"    right_table: {_y(other)}",
+                  f"    left_key: {_y(col)}", f"    right_key: {_y(right_key)}"]
+    used: set[str] = set()
+    sums = []
+    for draft in facts:
+        for col in draft["numeric"]:
+            if not _summable(col):
+                continue
+            measure = col if col not in used else f"{draft['table']}_{col}"
+            used.add(measure)
+            sums.append((measure, col))
+    if sums:
+        lines += ["", "measures:"]
+    for measure, col in sums:
+        lines += ["  # DRAFT: review", f"  - name: {_y(measure)}", f"    column: {_y(col)}",
+                  "    agg: sum"]
+    lines.append("")
+    return "\n".join(lines)
 
 
 def _model_source(title: str, slug: str, connection: str, drafts: list[dict],
