@@ -533,6 +533,9 @@ from a fraction. Store such a column in a unit its name states;
 a stored convention chosen to please the HTML renderer's derivation lands
 unformatted in the spreadsheet: check both renderers before changing data.
 
+A text column whose every value is `YYYY-MM` reads "Jan 2024" (derive.month_label /
+derive_text_formats; tracebi.js monthLabel), tables, axes and range pickers alike.
+
 Pass `derive_defaults=False` for the previous raw output verbatim.
 
 This exists because raw defaults are a trap that scales badly: a human
@@ -908,7 +911,9 @@ slice, point or legend entry (no control needed; shift adds), a row of a
 `data-tb-select-rows` table, a `data-tb-range`; a chart keeps its own field's
 other values and dims them (`data-tb-highlight="off"` to narrow instead); the
 selection bar (`data-tb-selection`, kit `<SelectionBar/>`) shows it, prints as
-one line, and Escape clears it. A row-select table keeps the other values only
+one line, and Escape clears it. A multiple filter on a live page is a button naming what is picked that opens a checkbox
+panel (tracebi.js paintMulti; the select stays the state, hidden); Escape in the panel
+closes it, never clears. A row-select table keeps the other values only
 of the fields its own row clicks wrote (`data-tb-select-rows="dim.attr"` names
 them); any other writer of the field takes it back, and the hash carries no
 owner. `tests/e2e/test_live_cascade.py` walks every

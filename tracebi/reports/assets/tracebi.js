@@ -335,6 +335,23 @@
     return allWhole ? "comma" : "decimal";
   }
 
+  /* A month-grain column ("2024-01", a model's month grain or a stored
+   * month) reads "Jan 2024" — derive.py month_label / derive_text_formats.
+   * The value stays the row's own: it sorts, filters and selects as built. */
+  var MONTH_RE = /^(\d{4})-(0[1-9]|1[0-2])$/;
+  var MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function monthLabel(v) {
+    var m = typeof v === "string" ? MONTH_RE.exec(v) : null;
+    return m ? MONTH_NAMES[parseInt(m[2], 10) - 1] + " " + m[1] : null;
+  }
+  function isMonthColumn(rows, col) {
+    var vals = columnValues(rows, col), i;
+    if (!vals.length) return false;
+    for (i = 0; i < vals.length; i++) if (monthLabel(vals[i]) === null) return false;
+    return true;
+  }
+
   /* ── The view layer — the control grammar's one law ─────────────────────
    * A figure's number is only ever a query result. On a live page the engine
    * reruns each binding's plan (The live page, below); everywhere else a
@@ -809,6 +826,9 @@
           var formatted = applyNamedFormat(n, entry.formats[col]);
           if (formatted !== null) text = formatted;
         }
+      } else if (entry.formats[col] === "month" && monthLabel(raw) !== null) {
+        addClass(td, "tb-period");
+        text = monthLabel(raw);
       }
       if (fixedPx) {
         td.style.height = fixedPx + "px";
@@ -1075,7 +1095,8 @@
           /* A time-grain label ("2026") is text, however numeric it looks. */
           numeric[col] = declared[col] !== "label" && isNumericColumn(rows, col);
           formats[col] = numeric[col]
-            ? (ownFormats[col] || declared[col] || deriveFormat(rows, col)) : null;
+            ? (ownFormats[col] || declared[col] || deriveFormat(rows, col))
+            : isMonthColumn(rows, col) ? "month" : null;
         });
 
         /* Build via createElement/textContent only — data never becomes
@@ -1609,6 +1630,10 @@
     var trace = ctx.trace || null;
     var panels = [];
     var allCats = evenSteps(plan, categories(plan, rows));
+    /* Month categories ("2024-01") are written "Jan 2024"; the category is
+     * still the row's value, which a click selects. */
+    var catText = allCats.length && allCats.every(function (c) { return monthLabel(String(c)) !== null; })
+      ? function (c) { return monthLabel(String(c)); } : function (c) { return c; };
     if (plan.facet) {
       var order = [], byFacet = {};
       (ctx.stamped || rows).forEach(function (r) {
@@ -1687,7 +1712,7 @@
      * names would be cut, and whose bands leave a line's room, each name
      * sits above its bar instead and the bars take the whole width. */
     var catW0 = 0;
-    cats.forEach(function (c) { catW0 = Math.max(catW0, textWidth(c, 12, k.font)); });
+    cats.forEach(function (c) { catW0 = Math.max(catW0, textWidth(catText(c), 12, k.font)); });
     var bandH = (ctx.height - 40) / Math.max(1, cats.length);
     var thickH = Math.min(36, bandH * (k.bar / 100) / Math.max(1, nSeries));
     var above = horizontal && !plan.facet && !plan.spark && ctx.width < 320 &&
@@ -1760,7 +1785,7 @@
       rowsN = Math.ceil(panels.length / cols);
     }
     var widest = 0;
-    cats.forEach(function (c) { widest = Math.max(widest, textWidth(c, 12, k.font)); });
+    cats.forEach(function (c) { widest = Math.max(widest, textWidth(catText(c), 12, k.font)); });
     var catLabel = {};
     var valueTitle = horizontal ? plan.xTitle : plan.yTitle;
     var catTitle = horizontal ? plan.yTitle : plan.xTitle;
@@ -1775,7 +1800,7 @@
       /* A name wraps only between words: a single word wider than its band
        * would be cut mid-word, so the names turn instead. */
       var oneWord = cats.some(function (c) {
-        return String(c).split(/\s+/).some(function (w) { return textWidth(w, 12, k.font) + 6 > band; });
+        return String(catText(c)).split(/\s+/).some(function (w) { return textWidth(w, 12, k.font) + 6 > band; });
       });
       if (widest + 6 <= band) catLabel = { interval: 0 };
       else if (cats.length > 16 || run) catLabel = { interval: "auto", hideOverlap: true };
@@ -1827,7 +1852,7 @@
       grid.push(g);
       var catAxis = { id: "c" + pi, gridIndex: pi, type: "category", data: cats, inverse: horizontal,
                       boundaryGap: isBar || !plan.spark,
-                      axisLabel: extend({ show: !plan.spark && !bare }, catLabel),
+                      axisLabel: extend({ show: !plan.spark && !bare, formatter: catText }, catLabel),
                       axisLine: { show: !plan.spark }, show: !plan.spark };
       var valAxis = { id: "v" + pi, gridIndex: pi, type: "value", show: !plan.spark,
                       axisLabel: { formatter: tick, hideOverlap: true },
@@ -1998,7 +2023,7 @@
           if (said && about.indexOf(said) === -1) about.push(said);
         });
         stops.push({ si: first < 0 ? series.length - p.series.length : first, di: i,
-                     title: (p.title ? p.title + " · " : "") + c, rows: rowsOut, about: about,
+                     title: (p.title ? p.title + " · " : "") + catText(c), rows: rowsOut, about: about,
                      pick: allCats.filled && first < 0 ? null : c, empty: first < 0 });
       });
     });
@@ -2532,6 +2557,17 @@
     var picked = keyColumn ? pickedSet(keyColumn) : null;
     var swatch = plan.type === "line" || plan.type === "area" ? "line"
       : plan.type === "scatter" ? "dot" : "box";
+    /* A pie's or a funnel's legend carries each slice's value: the row's own
+     * number, in the readout's format. Never a share the page worked out: a
+     * share shown is a column the binding returns (a share measure). */
+    var values = {};
+    if (kind === "item") {
+      var fmtV = chartFormatter(plan, entry.rows || [], plan.y[0]);
+      (entry.rows || []).forEach(function (r) {
+        var v = r[plan.y[0]];
+        if (v !== null && v !== undefined && v !== "") values[String(r[plan.x])] = fmtV(v);
+      });
+    }
     entry.keys.forEach(function (key) {
       var btn = document.createElement("button");
       btn.type = "button";
@@ -2560,6 +2596,13 @@
       label.textContent = kind === "item" || plan.color ? key : humanise(key);
       btn.appendChild(sw);
       btn.appendChild(label);
+      if (values.hasOwnProperty(key)) {
+        var val = document.createElement("span");
+        val.className = "tb-legend-value";
+        val.textContent = values[key];
+        btn.appendChild(val);
+        if (select) btn.setAttribute("aria-label", btn.getAttribute("aria-label") + ", " + values[key]);
+      }
       host.appendChild(btn);
     });
   }
@@ -3565,7 +3608,7 @@
       var text = "";
       Array.prototype.forEach.call(n.childNodes, function (c) {
         if (c === el || (c.nodeType === 1 && c.contains(el))) return;
-        if (c.nodeType === 3 || (c.nodeType === 1 && !/^(SELECT|INPUT)$/.test(c.tagName))) {
+        if (c.nodeType === 3 || (c.nodeType === 1 && !/^(SELECT|INPUT|BUTTON)$/.test(c.tagName))) {
           text += c.textContent;
         }
       });
@@ -4144,7 +4187,7 @@
       d.values.forEach(function (v) {
         var o = document.createElement("option");
         o.value = v;
-        o.textContent = v;
+        o.textContent = monthLabel(String(v)) || v;
         sel.appendChild(o);
       });
       sel.value = String(j === 0 ? lo : hi);
@@ -4304,13 +4347,14 @@
   }
 
   /* Escape clears the selection, unless the reader is typing, reading a
-   * chart with the keyboard, or has the trace open (Escape closes it). */
+   * chart with the keyboard, has the trace open (Escape closes it) or a
+   * multiple filter's panel (Escape closes that). */
   function onSelectionKey(e) {
     if (e.key !== "Escape" || !_calc || !_calc.local) return;
     var t = e.target, tag = t && t.tagName;
     if (tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) return;
     if (tag === "INPUT" && !/^(range|checkbox|radio|button|submit)$/.test(t.type || "")) return;
-    if (t && t.closest && t.closest(".tb-chart-svg, .tb-receipt-drawer")) return;
+    if (t && t.closest && t.closest(".tb-chart-svg, .tb-receipt-drawer, .tb-multi-panel")) return;
     var drawer = receiptDrawer();
     if (drawer && (" " + drawer.className + " ").indexOf(" tb-receipt-open ") !== -1) return;
     clearSelection();
@@ -4449,6 +4493,212 @@
        * separator must not be what sets the width. */
       add("", "Not in view", true).title = "Not under this selection";
       dom.rest.forEach(each);
+    }
+    if (el.multiple) paintMulti(el);
+  }
+
+  /* A multiple filter (<Filter multiple>, a template's data-tb-filter select
+   * with multiple) as a finished control: a button naming what is picked,
+   * opening a panel of checkboxes. The select stays the state: a box sets
+   * its option and fires the select's change, so the selection is written
+   * exactly as the select writes it. Printed, the button is the picked
+   * values. Presentation only. */
+  var _multiOpen = null, _multiSeq = 0, _multiWired = false;
+
+  function multiPicked(el) {
+    var out = [], i, o;
+    for (i = 0; i < el.options.length; i++) {
+      o = el.options[i];
+      if (o.selected && !o.disabled) out.push(o.textContent);
+    }
+    return out;
+  }
+
+  function makeMulti(el) {
+    var id = "tb-multi-" + (++_multiSeq);
+    var ui = { el: el, name: controlText(el) || humanise(attr(el, "data-tb-column") || "") };
+    var btn = ui.btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tb-multi";
+    btn.setAttribute("aria-haspopup", "true");
+    btn.setAttribute("aria-expanded", "false");
+    btn.setAttribute("aria-controls", id);
+    ui.value = document.createElement("span");
+    ui.value.className = "tb-multi-value";
+    ui.more = document.createElement("span");
+    ui.more.className = "tb-multi-more";
+    ui.full = document.createElement("span");
+    ui.full.className = "tb-multi-full";
+    btn.appendChild(ui.value);
+    btn.appendChild(ui.more);
+    btn.appendChild(ui.full);
+    var panel = ui.panel = document.createElement("div");
+    panel.className = "tb-multi-panel";
+    panel.id = id;
+    panel.hidden = true;
+    panel.setAttribute("role", "group");
+    panel.setAttribute("aria-label", ui.name);
+    var head = document.createElement("div");
+    head.className = "tb-multi-head";
+    var title = document.createElement("span");
+    title.textContent = ui.name;
+    ui.clear = document.createElement("button");
+    ui.clear.type = "button";
+    ui.clear.className = "tb-multi-clear";
+    ui.clear.textContent = "Clear";
+    ui.clear.setAttribute("aria-label", "Clear " + ui.name);
+    head.appendChild(title);
+    head.appendChild(ui.clear);
+    ui.list = document.createElement("div");
+    ui.list.className = "tb-multi-list";
+    panel.appendChild(head);
+    panel.appendChild(ui.list);
+    /* The select keeps the state and leaves the tab order: the button,
+     * first in its label, is what the label names and opens. */
+    el.parentNode.insertBefore(btn, el);
+    addClass(el, "tb-multi-native");
+    el.setAttribute("tabindex", "-1");
+    el.setAttribute("aria-hidden", "true");
+    btn.addEventListener("click", function () {
+      if (_multiOpen === ui) closeMulti(true); else openMulti(ui);
+    });
+    btn.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown" && _multiOpen !== ui) { e.preventDefault(); openMulti(ui); }
+    });
+    ui.clear.addEventListener("click", function () {
+      for (var i = 0; i < el.options.length; i++) el.options[i].selected = false;
+      fireChange(el);
+      var first = ui.list.querySelector("input");
+      if (first) first.focus();
+    });
+    ui.list.addEventListener("change", function (e) {
+      var box = e.target;
+      if (!box || box.type !== "checkbox") return;
+      for (var i = 0; i < el.options.length; i++) {
+        if (el.options[i].value === box.value && !el.options[i].disabled) {
+          el.options[i].selected = box.checked;
+        }
+      }
+      fireChange(el);
+    });
+    panel.addEventListener("keydown", function (e) { multiKey(ui, e); });
+    if (!_multiWired) {
+      _multiWired = true;
+      document.addEventListener("pointerdown", function (e) {
+        var open = _multiOpen;
+        if (!open) return;
+        if (open.panel.contains(e.target) || open.btn.contains(e.target)) return;
+        closeMulti(false);
+      }, true);
+      document.addEventListener("scroll", function (e) {
+        if (_multiOpen && !_multiOpen.panel.contains(e.target)) placeMulti(_multiOpen);
+      }, true);
+      root.addEventListener("resize", function () { if (_multiOpen) placeMulti(_multiOpen); });
+    }
+    return ui;
+  }
+
+  function fireChange(el) {
+    var ev;
+    try { ev = new Event("change", { bubbles: true }); }
+    catch (e) { ev = document.createEvent("Event"); ev.initEvent("change", true, true); }
+    el.dispatchEvent(ev);
+  }
+
+  function paintMulti(el) {
+    var ui = el._tbMulti || (el._tbMulti = makeMulti(el));
+    var picked = multiPicked(el);
+    ui.value.textContent = picked.length ? picked[0] : "All";
+    ui.more.textContent = picked.length > 1 ? "+" + (picked.length - 1) : "";
+    ui.full.textContent = picked.length ? picked.join(", ") : "All";
+    ui.btn.setAttribute("aria-label", ui.name + ": " + (picked.length ? picked.join(", ") : "all"));
+    ui.btn.setAttribute("data-tb-picked", String(picked.length));
+    ui.btn.title = picked.length ? picked.join(", ") : "";
+    ui.clear.disabled = !picked.length;
+    if (_multiOpen === ui) fillMulti(ui);
+  }
+
+  /* The panel's boxes, one per option, the excluded ones after a heading;
+   * rebuilt from the select, keeping the focused box focused. */
+  function fillMulti(ui) {
+    var el = ui.el, list = ui.list, focused = null, i, o;
+    var active = document.activeElement;
+    if (active && list.contains(active)) focused = active.value;
+    while (list.firstChild) list.removeChild(list.firstChild);
+    for (i = 0; i < el.options.length; i++) {
+      o = el.options[i];
+      if (o.disabled) {
+        var sep = document.createElement("div");
+        sep.className = "tb-multi-sep";
+        sep.textContent = o.textContent;
+        list.appendChild(sep);
+        continue;
+      }
+      var row = document.createElement("label");
+      row.className = "tb-multi-opt";
+      var box = document.createElement("input");
+      box.type = "checkbox";
+      box.value = o.value;
+      box.checked = o.selected;
+      var text = document.createElement("span");
+      text.textContent = o.textContent;
+      row.appendChild(box);
+      row.appendChild(text);
+      list.appendChild(row);
+      if (focused !== null && o.value === focused) box.focus();
+    }
+  }
+
+  function placeMulti(ui) {
+    var r = ui.btn.getBoundingClientRect(), p = ui.panel;
+    var W = root.innerWidth || document.documentElement.clientWidth;
+    var H = root.innerHeight || document.documentElement.clientHeight;
+    p.style.minWidth = Math.round(r.width) + "px";
+    var w = p.offsetWidth, h = p.offsetHeight;
+    var top = r.bottom + 4;
+    if (top + h > H - 8 && r.top - h - 4 >= 8) top = r.top - h - 4;
+    p.style.left = Math.round(Math.max(8, Math.min(r.left, W - w - 8))) + "px";
+    p.style.top = Math.round(top) + "px";
+  }
+
+  function openMulti(ui) {
+    if (_multiOpen) closeMulti(false);
+    _multiOpen = ui;
+    if (ui.panel.parentNode !== document.body) document.body.appendChild(ui.panel);
+    fillMulti(ui);
+    ui.panel.hidden = false;
+    ui.btn.setAttribute("aria-expanded", "true");
+    placeMulti(ui);
+    var first = ui.list.querySelector("input:checked") || ui.list.querySelector("input");
+    if (first) first.focus();
+  }
+
+  function closeMulti(focusButton) {
+    var ui = _multiOpen;
+    if (!ui) return;
+    _multiOpen = null;
+    ui.panel.hidden = true;
+    ui.btn.setAttribute("aria-expanded", "false");
+    if (focusButton) ui.btn.focus();
+  }
+
+  /* Escape closes and returns to the button; arrows move between boxes;
+   * Tab past either end leaves the panel as if it sat after the button. */
+  function multiKey(ui, e) {
+    var items = Array.prototype.slice.call(ui.panel.querySelectorAll("input, button:not(:disabled)"));
+    var boxes = items.filter(function (x) { return x.type === "checkbox"; });
+    var at = items.indexOf(document.activeElement);
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closeMulti(true);
+    } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      var b = boxes.indexOf(document.activeElement);
+      var next = boxes[Math.max(0, Math.min(boxes.length - 1,
+        b + (e.key === "ArrowDown" ? 1 : -1)))];
+      if (next) { e.preventDefault(); next.focus(); }
+    } else if (e.key === "Tab") {
+      if (e.shiftKey && at <= 0) { e.preventDefault(); closeMulti(true); }
+      else if (!e.shiftKey && at === items.length - 1) closeMulti(true);
     }
   }
 

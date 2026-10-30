@@ -246,7 +246,9 @@ selects as a kit chart's click does.
 
 For app behaviour: `<Filter column>` with no `binding` filters the whole page
 (every binding with that column; on a live page every figure it reaches
-recomputes, and `multiple` picks several values); `<Range column>` is a range
+recomputes, and `multiple` picks several values: a button naming what is
+picked opens a panel of checkboxes, and it prints as the values picked);
+`<Range column>` is a range
 on the page's selection, `<Table selectRows>` selects by row, and
 `<SelectionBar />` places the bar of what is picked;
 `<Segmented options value onChange>` picks which figure shows — a period

@@ -207,9 +207,18 @@ def mono_face_css() -> str:
         )
     with open(path, "rb") as f:
         data = base64.b64encode(f.read()).decode("ascii")
+    with open(os.path.join(_ASSETS_DIR, "geist-latin-wght-normal.woff2"), "rb") as f:
+        sans = base64.b64encode(f.read()).decode("ascii")
+    # A monospaced comma and point take a digit's full cell, so "$3,535"
+    # reads "$3 , 535". The same family's comma and point come from Geist
+    # (declared last, so it wins for those two): digits stay tabular, the
+    # separators sit tight. Only this family; code keeps --tb-mono.
     return ('@font-face{font-family:"Geist Mono";font-style:normal;font-display:swap;'
             f'font-weight:100 900;src:url("data:font/woff2;base64,{data}") '
-            f'format("woff2");unicode-range:{_FONT_RANGE}}}\n')
+            f'format("woff2");unicode-range:{_FONT_RANGE}}}\n'
+            '@font-face{font-family:"Geist Mono";font-style:normal;font-display:swap;'
+            f'font-weight:100 900;src:url("data:font/woff2;base64,{sans}") '
+            'format("woff2");unicode-range:U+002C,U+002E}\n')
 
 
 @functools.lru_cache(maxsize=None)

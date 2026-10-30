@@ -62,7 +62,7 @@ function Overview() {
         <Kpi binding="totals" cell="unrealized" format="currency_compact"
              label="Unrealized" context="fair value less cost" id="kpi-unrealized" />
         <Kpi binding="totals" cell="positions" label="Positions" id="kpi-positions" />
-        <Kpi binding="totals" cell="wtd_spread_bps" format="comma"
+        <Kpi binding="totals" cell="wtd_spread_bps"
              label="Spread, bps" context="par-weighted" id="kpi-spread" />
       </div>
       <div className="tb-grid">
@@ -100,8 +100,7 @@ function Holdings() {
              columns={["dim_issuer.issuer", "dim_issuer.sector", "dim_fund.fund", "fair_value",
                        "unrealized", "mark", "wtd_spread_bps"]}
              labels={{ "dim_issuer.issuer": "Issuer", "dim_issuer.sector": "Sector",
-                       "dim_fund.fund": "Fund", "wtd_spread_bps": "Spread, bps" }}
-             formats={{ "wtd_spread_bps": "comma" }} />
+                       "dim_fund.fund": "Fund", "wtd_spread_bps": "Spread, bps" }} />
     </section>
   );
 }
@@ -146,8 +145,7 @@ function Funds() {
         <Table binding="by_fund" id="funds-table" sort
                columns={["dim_fund.fund", "fair_value", "unrealized", "mark", "positions",
                          "wtd_spread_bps"]}
-               labels={{ "dim_fund.fund": "Fund", "wtd_spread_bps": "Spread, bps" }}
-               formats={{ "wtd_spread_bps": "comma" }} />
+               labels={{ "dim_fund.fund": "Fund", "wtd_spread_bps": "Spread, bps" }} />
       </section>
     </>
   );

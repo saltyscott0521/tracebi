@@ -53,6 +53,35 @@ _IDENTITY_NAMES = ("id", "key", "year")
 _IDENTITY_SUFFIXES = ("_id", "_key", "_year")
 
 
+#: A month-grain value as a model's month grain (and a stored month column)
+#: writes it: ``2024-01``. Mirrored in tracebi.js monthLabel.
+_MONTH = re.compile(r"^(\d{4})-(0[1-9]|1[0-2])$")
+_MONTH_NAMES = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def month_label(value) -> Optional[str]:
+    """``"2024-01"`` → ``"Jan 2024"``; anything else → None. The same month,
+    written for a reader: presentation only, the value stays the row's."""
+    m = _MONTH.match(value) if isinstance(value, str) else None
+    return f"{_MONTH_NAMES[int(m.group(2)) - 1]} {m.group(1)}" if m else None
+
+
+def derive_text_formats(df) -> dict[str, str]:
+    """``{column: "month"}`` for each text column of *df* whose every
+    non-null value is a month (``2024-01``): its cells read ``Jan 2024``.
+    tracebi.js ``isMonthColumn`` is the port."""
+    out = {}
+    numeric = set(df.select_dtypes(include="number").columns)
+    for col in df.columns:
+        if col in numeric or getattr(df[col], "ndim", 1) != 1:
+            continue
+        values = [v for v in df[col].dropna() if v != ""]   # as the runtime's columnValues
+        if values and all(month_label(v) is not None for v in values):
+            out[str(col)] = "month"
+    return out
+
+
 def _is_fraction_shaped(series) -> bool:
     """
     True when no non-null value is too large to be a fraction.

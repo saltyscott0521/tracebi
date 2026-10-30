@@ -284,6 +284,51 @@ test) walks the five tasks; `serve_app` now also forgets discovery's live
 reports, since it empties the registry's.
 
 ---
+## 2026-10-30 — Reports' controls and marks look finished (KIT-POLISH)
+
+**The multiple filter.** The select stays the state, unseen: tracebi.js puts a
+button before it in its label (so the label names the button and a click on
+the label opens it) and a panel of checkboxes in `<body>`, `position: fixed`,
+so a phone's sideways-scrolling control row cannot clip it. Each box sets its
+option and fires the select's change, so nothing new writes the selection, and
+the tests that drive the select with `select_option` still do. It is drawn for
+the live page only (`fillCalcOptions`); a page built with `embed: none` keeps
+the list box, where a multiple select never did more than one value. The
+kit's `<Filter>` is unchanged, so `react.min.js` is not rebuilt. Escape inside
+the panel closes it and does not clear the selection (`onSelectionKey` skips
+`.tb-multi-panel`). The field's name on the selection bar ignores the button's
+text (`controlText` skips a `BUTTON`).
+
+**Pie values, not shares.** A legend chip shows the row's value in the chart's
+format. A share would be a number the page computed (value over the sum of the
+rows drawn), so it is not shown; a report that wants one binds a `share`
+measure (`fv_share`). The showcase's donut keeps fair value.
+
+**Months.** Shape-based, like the other derived defaults: a text column whose
+every non-empty value matches `YYYY-MM` (01-12). The model's `"label"` for a
+time grain still means "never a number"; it does not stop the month words.
+An explicit opt-out was not added (none asked). The selection chips and the
+filter's options keep the value as stored ("Cohort: 2024-01"): they name the
+state the address carries, and the cascade journey reads them that way. Excel derives nothing, as
+before, and the legacy `HTMLRenderer` is untouched.
+
+**Nightdesk.** Not the sans's tabular figures (that would be Ledger's
+numerals): a second `@font-face` for the same family, `"Geist Mono"`, with
+Geist's file and `unicode-range: U+002C, U+002E`, declared after the mono, so
+the browser takes those two glyphs from it. `--tb-mono` (code) is a different
+family and keeps its own comma. A Nightdesk page carries Geist's 28 KB twice.
+
+**The spread.** `decimal`, not `comma`: under the showcase's sector the spread
+moves from 572.48 to 572.32, which `comma` writes as 572 both times, and the
+showcase's check that a value's text changes exactly when its number does
+would fail. The page overrides on the KPIs and the tables went with it.
+
+**The book's first page.** Tried keeping a heading's one paragraph with the
+figure under it (`h2 + p:has(+ figure)` `break-after: avoid`): the section
+moved to page 2 whole, page 1 then ended after the KPI strip, and the sector
+table lost its last row to page 3. Shrinking the chart to the third of a page
+left would put six bars in under 30px bands, below the engine's 320px chart
+floor. Neither reads better, so the print is as it was.
 
 ## 2026-10-30 — The agent path works end to end on the shipped workspace, on a lean payload (AGENT-LOOP)
 
