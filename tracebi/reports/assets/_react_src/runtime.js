@@ -1,15 +1,18 @@
-// The React lane's runtime: one React, the JSX compiler, the TraceBi kit, and
-// the boot that compiles the report's app.jsx in the page and mounts it.
+// The React lane's runtime: one React, the TraceBi kit, and the boot that
+// runs the report's app.jsx and mounts it.
 //
-// The app source rides in the page as a JSON string (#tracebi-app). It is
-// compiled here, in the browser, and run as an inline script — the page's CSP
-// allows inline scripts and still refuses eval. Imports resolve only to the
-// modules registered below; the build has already refused any other.
+// The build compiles app.jsx once (tracebi/reports/app_lane.py compile_app):
+// the page carries the result as a plain script (#tracebi-app) that defines
+// window.__tbApp(module, exports, require), and nothing is compiled here.
+// Where the build could not compile it, the page carries the source as a JSON
+// string (#tracebi-app) and the same compiler (sucrase.min.js,
+// window.__tbSucrase), which compiles it here and runs it as an inline script:
+// the page's CSP allows inline scripts and still refuses eval. Imports resolve
+// only to the modules registered below; the build has already refused any other.
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import * as ReactDOMClient from "react-dom/client";
 import * as jsxRuntime from "react/jsx-runtime";
-import { transform } from "sucrase";
 import * as kit from "./kit.jsx";
 import { lucideModule } from "./icons.js";
 
@@ -66,26 +69,22 @@ class Boundary extends React.Component {
 
 function start() {
   const host = document.getElementById("tb-app");
-  const source = readJson("tracebi-app");
-  if (!host || typeof source !== "string") return;
+  if (!host) return;
   let App;
   try {
-    const code = transform(source, {
-      transforms: ["jsx", "typescript", "imports"],
-      jsxRuntime: "automatic",
-      production: true,
-      filePath: "app.jsx",
-    }).code;
-    window.__tbAppModule = null;
-    window.__tbAppError = null;
-    const script = document.createElement("script");
-    script.textContent =
-      "(function(){var module={exports:{}},exports=module.exports,require=window.__tbRequire;" +
-      "try{\n" + code + "\n;window.__tbAppModule=module.exports;}catch(e){window.__tbAppError=e;}})();";
-    document.head.appendChild(script);
-    if (window.__tbAppError) throw window.__tbAppError;
-    const mod = window.__tbAppModule || {};
-    App = mod.default;
+    if (typeof window.__tbApp !== "function") {
+      // Compiled in the page: the build could not compile it.
+      const source = readJson("tracebi-app");
+      if (typeof source !== "string") return;
+      if (!window.__tbSucrase) throw new Error("This page carries no app.jsx compiler.");
+      const script = document.createElement("script");
+      script.textContent = "window.__tbApp=function(module,exports,require){\n" +
+        window.__tbSucrase.compile(source) + "\n};";
+      document.head.appendChild(script);
+    }
+    const mod = { exports: {} };
+    window.__tbApp(mod, mod.exports, window.__tbRequire);
+    App = (mod.exports || {}).default;
     if (typeof App !== "function") {
       throw new Error("app.jsx must `export default` a component.");
     }

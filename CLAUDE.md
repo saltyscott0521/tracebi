@@ -243,10 +243,15 @@ tracebi/               # Core Python package (~24,000 LOC)
                        #   engine: pure JS, _calc_src/, CALC_NOTICE.md; tracebi.js "The chart engine":
                        #   ONE ECharts option builder (optionFor) + theme (chartTheme) for every chart,
                        #   template figures and the kit's <Chart>/<Spark>/<EChart> alike; the one ECharts
-                       #   build echarts-kit.min.js (root.__tbECharts, inlined on any page with a chart);
-                       #   d3.min.js only for tracebi.draw ("libs": ["d3"]); the React lane's react.min.js
-                       #   (TanStack Redact, the one runtime, with the kit), recharts.min.js (Recharts 2),
-                       #   _react_src/, REACT_NOTICE.md; the house chart look: --tb-chart-* tokens in
+                       #   build echarts-kit.min.js (root.__tbECharts, inlined on any page with a chart;
+                       #   tree-shaken to the builder's series, heatmap, sankey and the components the guides
+                       #   name, _react_src/echarts-entry.js); d3.min.js only for tracebi.draw ("libs": ["d3"]);
+                       #   the React lane's react.min.js (TanStack Redact, the one runtime, with the kit; no
+                       #   compiler), recharts.min.js (Recharts 2), _react_src/, REACT_NOTICE.md; app.jsx is
+                       #   compiled at build (app_lane.compile_app: sucrase.min.js + tailwind-compiler.min.js
+                       #   run in mini-racer's V8, no Node; the page carries the JS and the Tailwind CSS;
+                       #   manifest app_compile at build|page; without mini-racer the page inlines
+                       #   sucrase.min.js + tailwind.min.js and compiles itself); the house chart look: --tb-chart-* tokens in
                        #   tracebi.css, read at draw time from the figure (chartTokens), SVG by default,
                        #   canvas per figure (data-tb-renderer) or report.json "charts"
                        #   (docs/reference/chart-style.md); house.py (the three house themes:

@@ -48,7 +48,10 @@ tracebi report build sales_model/revenue_app
 
 Any other import fails the build and names the list.
 
-Tailwind classes work everywhere, generated in the page. The TraceBi tokens
+Tailwind classes work everywhere. The build writes the CSS for the classes
+app.jsx spells out (it reads the source's text, as Tailwind's CLI does), so
+write each class whole: `"text-good"` or `"text-bad"`, never `"text-" + tone`.
+The TraceBi tokens
 are Tailwind colours, so an app follows the page's mode and
 `reports/_theme.css`: `bg-page`, `bg-card`, `bg-surface`, `text-ink`,
 `text-muted`, `border-rule`, `bg-accent`, `text-accent-text`, `text-on-accent`,
@@ -131,6 +134,13 @@ in the runtime. Whether a
 chart is a checked figure follows its data, not who wrote it. It draws in the
 house look, from the page's chart tokens ([[chart-style]]), so the workspace's
 brand reaches it; never hard-code a colour in its `option`.
+
+The page carries a tree-shaken ECharts: the series bar, line, scatter,
+effectScatter, pictorialBar, pie, funnel, treemap, sunburst, heatmap and
+sankey, with grid, tooltip, title, legend, dataZoom (the slider), brush,
+visualMap, markLine, markPoint, markArea, toolbox and aria, and both
+renderers. Another series type (radar, gauge, candlestick, graph, …) is not
+in it: ECharts draws nothing for it, and says nothing.
 
 ```jsx
 <EChart binding="by_sector" type="treemap" x="dim_issuer.sector" y="fair_value"
@@ -261,6 +271,19 @@ export default function App() {
   );
 }
 ```
+
+## Compiled at build
+
+`tracebi report build` compiles `app.jsx` once: Sucrase turns its JSX into
+plain JavaScript and Tailwind's compiler writes the CSS for its classes, both
+run in an embedded V8 (`mini-racer`, in the `reports` extra), so no Node is
+needed. The page carries that script and that CSS, not a compiler or
+Tailwind, and JSX that does not parse fails the build with its line and
+column. The manifest records which way it went: `"app_compile": {"at":
+"build"}`, or, where the build cannot run them (mini-racer not installed),
+`{"at": "page", "reason": …}`, and the page carries the source, Sucrase and
+Tailwind's browser build and compiles itself in the reader's browser, as it
+did before.
 
 ## Without JavaScript
 

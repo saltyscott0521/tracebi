@@ -280,8 +280,10 @@ Self-hosted by the web UI only; it is not inlined into generated reports.
 
 ================================================================================
 React lane bundles (tracebi/reports/assets/react.min.js, recharts.min.js,
-tailwind.min.js, lucide-icons.json) — inlined into a generated report whose
-page is app.jsx. See tracebi/reports/assets/REACT_NOTICE.md.
+sucrase.min.js, tailwind-compiler.min.js, tailwind.min.js, lucide-icons.json) —
+inlined into a generated report whose page is app.jsx, or run at build to
+compile it (sucrase.min.js, tailwind-compiler.min.js; the CSS Tailwind
+generates is inlined). See tracebi/reports/assets/REACT_NOTICE.md.
 
 React 18.3.1 and ReactDOM 18.3.1 — https://react.dev — MIT License,
     Copyright (c) Meta Platforms, Inc. and affiliates.
@@ -290,7 +292,7 @@ Sucrase 3.35.0 — https://github.com/alangpierce/sucrase — MIT License,
 Recharts 3.1.2 — https://recharts.org — MIT License,
     Copyright (c) 2015-present recharts. Bundles MIT and ISC licensed
     dependencies (Redux Toolkit, Immer, Reselect, eventemitter3, d3 modules).
-Tailwind CSS 4.1.11 (browser build) — https://tailwindcss.com — MIT License,
+Tailwind CSS 4.1.11 (compiler and browser build) — https://tailwindcss.com — MIT License,
     Copyright (c) Tailwind Labs, Inc.
 Lucide 0.468.0 icons — https://lucide.dev — ISC License,
     Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as

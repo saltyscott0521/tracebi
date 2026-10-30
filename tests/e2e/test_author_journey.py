@@ -264,6 +264,11 @@ def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
                       "ech-regions": "by_region",
                       "fig-table-by_region": "by_region"}
     assert "This page is an app." in built
+    # Compiled once, at build: the page carries JavaScript and the Tailwind
+    # CSS its classes need, not a compiler or Tailwind's browser build.
+    assert json.loads(manifest_path.read_text())["app_compile"]["at"] == "build"
+    assert "window.__tbApp=function" in built and "TraceBi-credit: Sucrase" not in built
+    assert 'type="text/tailwindcss"' not in built and "browser build (MIT)" not in built
     code, out = run_cli("verify", str(manifest_path))
     assert code == 0, out
 
@@ -283,6 +288,7 @@ def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
             size = page.evaluate("""(id) => { const c = document.querySelector('#' + id + ' [role=img] svg');
                 if (!c) return null; const r = c.getBoundingClientRect(); return [r.width, r.height]; }""", fid)
             assert size and size[0] > 0 and size[1] > 0, (fid, size)
+        assert page.evaluate("() => getComputedStyle(document.querySelector('main')).display") == "flex"
         assert page.locator("#ech-regions[data-tb-figure='chart']").count() == 1
         assert page.locator("#ech-share[data-tb-computed]").count() == 1
         n_points = """(id) => { const el = document.querySelector('#' + id + ' [role=img]');
@@ -327,6 +333,12 @@ def test_an_app_jsx_report_builds_claims_and_verifies(scaffolded):
     (pkg / "app.jsx").write_text(_APP_JSX.replace('"recharts"', '"chart.js"'), encoding="utf-8")
     code, out = run_cli("report", "build", "regions_app")
     assert code != 0 and '"chart.js", which is not in the TraceBi kit' in out
+    # JSX that does not parse fails the build, where it used to ship a page
+    # that said so to the reader.
+    (pkg / "app.jsx").write_text(_APP_JSX.replace("const regions =", "const regions = ="),
+                                 encoding="utf-8")
+    code, out = run_cli("report", "build", "regions_app")
+    assert code != 0 and "app.jsx does not compile: Unexpected token (" in out
 
     (pkg / "app.jsx").write_text(_APP_JSX.replace('binding="kpis"', 'binding="kpi"'),
                                  encoding="utf-8")
