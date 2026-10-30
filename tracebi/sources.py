@@ -279,6 +279,28 @@ def _contract_owners() -> dict[str, str]:
     return owners
 
 
+def other_forms(name: str) -> list[str]:
+    """The files in transforms/ that are another form of transform *name*: a
+    Python transform whose ``with contract("...")`` names a record *name*
+    owns (the pandas twin of a SQL transform), as ``transforms/<file>``.
+    Read as text, as :func:`transforms_listing`'s ``twin_of`` is."""
+    from tracebi.transforms import FORMS, transforms_dir
+
+    tdir = transforms_dir()
+    owners = _contract_owners()
+    out = []
+    for path in sorted(tdir.iterdir()) if tdir.is_dir() else []:
+        if path.suffix not in FORMS or path.suffix == ".sql" or path.stem == name:
+            continue
+        try:
+            records = _CONTRACT_NAME.findall(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError):
+            continue
+        if any(owners.get(r) == name for r in records):
+            out.append(f"{tdir.name}/{path.name}")
+    return out
+
+
 def read_words(ref: str, snapshot: Optional[str] = None) -> str:
     """One outside input a transform's run read, as every trace says it: the
     connection's table, and the committed file that stood in for it when one

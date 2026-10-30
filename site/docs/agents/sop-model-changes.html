@@ -174,7 +174,11 @@ fix was a small, reviewed change to the wealth model. In
   published copy) and <code>write_draft_file</code> over MCP, then <code>model_impact</code> and
   publish.
   Publishing re-runs every published report that reads the model against the
-  draft (the impact check) and asks for <code>accept_impact</code> when numbers move.</li>
+  draft (the impact check) and asks for <code>accept_impact</code> when numbers move.
+  <code>preview_draft</code> also refuses a <code>time_grains</code> entry whose <code>source</code> the
+  warehouse holds as anything but a DATE or TIMESTAMP (a text month such as
+  <code>2025-07</code> is grouped by as the attribute it is), since every query grouping
+  by it would fail.</li>
 <li>A gateway process started per call (stdio) sees a committed change on its
   next start. A long-running gateway caches imported model modules and must be
   restarted. Either way agents see the change on their next call.</li>
@@ -259,7 +263,14 @@ with no formatting in the spec.</p>
 <li>For a demo-model change, re-render the affected specs and compare
    fingerprints. Sections your change touches should change; every other
    section's fingerprint must stay identical.</li>
-<li><strong>Renaming or removing a measure breaks the contract.</strong> Search <code>reports/</code>
+<li><strong>Renaming or removing a measure breaks the contract.</strong> Over MCP,
+   <code>downstream(node='measure:&lt;model&gt;:&lt;measure&gt;')</code> (or
+   <code>node='table:&lt;warehouse&gt;.&lt;table&gt;'</code> for a table the model would stop
+   reading) names every built report figure that reads it, from the builds'
+   manifests, each report with its verdict. To prove it, write the removal
+   into a model draft and run <code>model_impact(path)</code>: the reports it lists as
+   <code>breaks</code> are the ones that would. <code>delete_draft(kind="models", path=&lt;name&gt;)</code>
+   drops a what-if draft once it has answered. On a laptop, search <code>reports/</code>
    and <code>examples/</code> for it, and <code>tracebi report build</code> each package that binds
    it (a binding to a missing measure fails the build). A published model's
    impact check lists the reports that break.</li>

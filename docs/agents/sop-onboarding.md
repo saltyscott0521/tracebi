@@ -64,8 +64,11 @@ and column the columns DuckDB's parse proves it is computed from. It reads
 code, never rows. Its `change` is the call that proposes a change, or, when
 a `-- source:` line names a table you may not read, says so and names each
 such line: a change would have to read it too, so ask the person to tick it
-first. A transform node's `passport.agents.tools` in the graph names the
-tools that take its name, and `passport.agents.blocked` the same lines.
+first. `other_forms` lists any other file of the same transform (a pandas
+twin that declares the same contract): a change you propose does not reach
+it, and the proposal's `note` says so; tell the person. A transform node's
+`passport.agents.tools` in the graph names the tools that take its name, and
+`passport.agents.blocked` the same lines.
 
 Then the connections themselves:
 
@@ -88,7 +91,14 @@ Each table comes with its columns (`{name, type}`) and `rows`: exact for
 DuckDB, the database's own estimate (`rows_exact: false`) where it keeps one,
 else `null`. A connection that cannot be reached answers `ok: false` with a
 `reason`, and `variable` when an unset `${VAR}` is why: tell the person which
-one to set.
+one to set. It also gives `snapshots`, the committed files the transforms'
+`-- source:` lines read in a table's place
+(`-- source: crm.issuer_ratings fallback: inputs/issuer_ratings.csv`), and
+`unread_inputs`, the files in `inputs/` no transform reads yet: a new table's
+snapshot a person committed is there. A dry run reads a `fallback:` file as
+the run does, so you can propose against it and read the result in
+`dry_run`; you cannot see its columns before that, so ask the person when
+it matters.
 
 Then look at each table you will use:
 

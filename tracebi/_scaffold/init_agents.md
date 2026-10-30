@@ -544,11 +544,24 @@ package loop (query, paste each `binding` object under `data.<name>`,
 `build_report`, `verify_manifest`), with files or, without them, through
 drafts (`start_draft(kind='reports')`, `write_draft_file`, `preview_draft`,
 `publish_draft`);
-`answer_question(question, model="")` answers in plain words with each
-number beside its fingerprint and measure, never estimates, and builds no
-report unless asked; `address_pins(report)` reads `workbench_state`, acts
-on each open pin in order, rebuilds, `verify_manifest`s the manifest, then
-`resolve_pin`s each with a one-line note.
+`answer_question(question, model="")` reads `describe_model` (with no
+model named, `list_models` first: each model's description), answers in
+plain words with each number beside its fingerprint and measure, never
+estimates, and builds no report unless asked; asked whether a number is
+checked, it says two things, never blended: `downstream(node=
+'measure:<model>:<measure>')` names the built figures that show it, each
+report with its verdict and `manifest_path` for `verify_manifest`, and
+`describe_table(table)`'s `contract` says whether the sink satisfied its
+contract. `address_pins(report)` reads `workbench_state`, acts on each open
+pin in order (in place, or as a report draft over the gateway; a pin that
+doubts a number is checked with `query_model` before anything changes),
+rebuilds, `verify_manifest`s the manifest, then `resolve_pin`s each with a
+one-line note. `list_reports` gives each built report's `built.manifest_path`.
+
+What breaks if a table or measure goes: `downstream(node='table:<warehouse>.<table>')`
+(or `source_table:<connection>.<table>`, `measure:<model>:<measure>`) lists every
+built report figure that reads it, from the builds' manifests; `model_impact` on a
+what-if model draft proves it, and `delete_draft(kind, path)` drops the draft after.
 
 If you cannot reach the workspace's files, draft over the gateway instead:
 `start_draft`, `write_draft_file`, `preview_draft` (give the person the url it
@@ -567,9 +580,9 @@ and ticks the tables agents may read (`agents: {tables: [a, b]}` in
 (`docs/agents/sop-onboarding.md` in the TraceBi handbook walks it):
 
 - `describe_project` (or `describe_workspace`, the same tool) — the workspace as a graph: every source, transform, table, model and report, what feeds what, and what you may read (a transform's `passport.agents.blocked` lists each `-- source:` line naming a table you may not read: no change is offered while one is there). Call it first. A table a SQL transform wrote carries `columns_from` (also on `describe_table`): the source columns each column is computed from, as DuckDB's parser proved it; `null` with a reason where it could not follow, nothing for pandas.
-- `read_transform(name)` — a transform that exists: its SQL and `.contract.yaml`, its form, the tables it writes, what its last run read and its column lineage, and `change`: the call to make, or why not, naming each blocking `-- source:` line. Code, never rows.
+- `read_transform(name)` — a transform that exists: its SQL and `.contract.yaml`, its form, the tables it writes, what its last run read and its column lineage, `other_forms` (a pandas twin declaring the same contract, which a proposed change does not reach), and `change`: the call to make, or why not, naming each blocking `-- source:` line. Code, never rows.
 - `list_connections` — each connection's type and the tables agents may read.
-- `list_source_tables(connection)` — those tables, with columns and row estimates.
+- `list_source_tables(connection)` — those tables, with columns and row estimates. A connection that cannot be reached answers `ok: false` with `reason`, `snapshots` (the committed files transforms read in a table's place, `-- source: <connection>.<table> fallback: inputs/<file>.csv`), `unread_inputs` and a `note`.
 - `describe_source_table(connection, table, sample=20)` — columns, a profile and sample rows; any other table is "not found".
 - `propose_transform(name, sql, contract_yaml, note, change=false)` — the SQL and its contract as a code request (`change=true` changes an existing SQL transform; it must keep writing every table a model reads, and a Python transform is a person's, through `tracebi push`). It is dry-run at once against a throwaway copy — nothing real is written, a `-- sink:` line is not sent — and `dry_run` gives each table it made (columns, rows, `state` — `new`, `changed` or `unchanged` against the warehouse — and the first 20 rows of a new or changed one), each check (`passed`, `failing_rows`), the column lineage and any error with its statement. SQL that does not parse comes back as that one error. While it fails, fix it and propose again: a failed one cannot be approved. An admin approves it and it runs once (and is committed, in a git workspace), so wait for that, then draft the model.
 - `export_table(source, table, to)` — admin only: a warehouse table out to a connection or an object prefix.
