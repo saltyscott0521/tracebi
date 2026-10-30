@@ -4,6 +4,64 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-30 — The workbench opens inside the agent (WORKBENCH-APP)
+
+The owner asked for the workbench to come up beside the chat in an agent such
+as Claude and take input live. The standard for that is MCP Apps (the
+`io.modelcontextprotocol/ui` extension): a tool names a `ui://` resource in
+`_meta.ui.resourceUri`, the host renders that HTML in a sandboxed frame, and the
+page talks to the host over JSON-RPC on postMessage (`ui/initialize`,
+`tools/call`, `ui/message`, `ui/update-model-context`, `ui/open-link`,
+`ui/request-display-mode`). The `mcp` package we pin (`>=2.0`; 2.2.0 installed)
+ships it in core as `mcp.server.apps` (`Apps`, `client_supports_apps`), so no
+upgrade.
+
+**Which tools open it.** The three the agent already calls when it works on a
+page: `preview_draft`, `workbench_state`, `build_report`. Not a new
+`open_workbench`: these already name the target (kind and path, or report),
+the host hands the panel that tool call's arguments, and a fourth way to say
+"show me" would only be a synonym. Each call may open a panel in the host;
+every one stays live, so an older one is not stale.
+
+**Live by polling.** A host sends a panel only the input and result of the call
+that opened it, so `write_draft_file` (which has no UI) never reaches it. The
+panel therefore re-calls a read-only tool every two seconds with the version it
+holds (`workbench_view(since=…)`), which answers `changed: false` from a stat
+digest until the package, its models, the pins or the feed change. That is the
+part of the bridge every host implements (`tools/call` from the app).
+
+**The panel's tools.** `workbench_view` (read) and `workbench_pin` (writes
+`pins.json` only, in `_WRITE_TOOLS`) carry `visibility: ["app"]`, so a host keeps
+them from the agent; a client that did not negotiate MCP Apps is not listed them
+at all (`tools/list` is wrapped), so the agent's count stays 30 everywhere.
+
+**Drafts' pins.** A draft has no library workbench, so its pins live in the
+report path's (`.tracebi/workbench/<path>/`): the same file a published copy of
+that path uses, so pins carry across publish. `workbench_state` and
+`resolve_pin` take `draft=true` to read and resolve them against the caller's
+draft; `collect_state` takes the workbench directory. The `address_pins` prompt
+is unchanged (another branch edits the prompts); the SOP names the draft calls.
+
+**The feed.** The panel's poll touches the workspace heartbeat, so while it is
+open the gateway's actions post to the feed as they do under `tracebi dev`;
+`write_draft_file` now posts one line. The panel shows those lines as text,
+never a query's rows.
+
+**The page.** The report is the working render (a draft's preview, or a
+package with exploration kept, as Build mode shows it) in a nested
+`sandbox="allow-scripts"` srcdoc frame, talking to the panel through
+tracebi.js's existing host bridge (figure clicks, the selection; no change to
+tracebi.js). A page whose mode is `auto` takes the host's theme. The panel draws
+no number: figure status is words (model query, python-derived, marked
+unverified, no data behind it, plus the page's Local or Fixed).
+
+**Hosts.** Claude on the web and desktop render MCP Apps (inline in the
+conversation, with a fullscreen mode the panel asks for with Expand); Claude
+Code in the terminal does not, and gets `workbench_url` / the draft's `url`,
+which the desktop app's preview pane can open while `tracebi dev` serves it.
+
+---
+
 ## 2026-10-30 — The agent path works end to end on the shipped workspace, on a lean payload (AGENT-LOOP)
 
 The third audit walked an agent over the reference workspace and found the

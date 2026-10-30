@@ -47,6 +47,8 @@ sections:
       - sign-in
       - push-from-a-laptop
       - connect-chatgpt-and-claude
+      - page: workbench-in-your-agent
+        blurb: The report beside the chat, live; click a figure and pin a note for your agent
       - web-customization
       - page: updating
         blurb: Check for a new release and update your install with `tracebi update`

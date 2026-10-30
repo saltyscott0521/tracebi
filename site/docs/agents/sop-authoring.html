@@ -49,6 +49,7 @@
 <a href="../guides/sign-in.html">Sign in with your company login</a>
 <a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
 <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
+<a href="../guides/workbench-in-your-agent.html">The workbench in your agent</a>
 <a href="../guides/web-customization.html">Customize the web app</a>
 <a href="../guides/updating.html">Update TraceBi</a>
 <div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
@@ -101,8 +102,10 @@ from it.</p>
   sunk or modelled, start with step 0 below, then come back to step 1.</li>
 </ul>
 <h3 id="the-tools">The tools</h3>
-<p>The gateway has thirty tools and three prompts (<code>author_report</code>,
-<code>answer_question</code>, <code>address_pins</code>) that run this procedure for you. The MCP
+<p>The gateway has thirty tools for you and three prompts (<code>author_report</code>,
+<code>answer_question</code>, <code>address_pins</code>) that run this procedure for you, plus two
+the workbench panel calls (<code>workbench_view</code>, <code>workbench_pin</code>; a host keeps
+them from you, and a client without MCP Apps is not shown them). The MCP
 <code>tools/list</code> call is the source of truth if this table drifts. This SOP walks
 the spec path. A report package is the same loop with <code>build_report</code>. Over a
 hosted connection, the draft tools are how a package reaches the server, with
@@ -158,11 +161,11 @@ no file access at all (step 3, "With only the gateway"; and
 </tr>
 <tr>
 <td><code>workbench_state</code></td>
-<td>What the <code>tracebi dev</code> workbench shows, including a reviewer's pins</td>
+<td>What the workbench shows, including a reviewer's pins (<code>draft=true</code>: your report draft at that path). Opens the workbench panel in a host with MCP Apps; <code>workbench_url</code> is the link otherwise</td>
 </tr>
 <tr>
 <td><code>resolve_pin</code></td>
-<td>Mark a reviewer's pin as addressed, with a note</td>
+<td>Mark a reviewer's pin as addressed, with a note (<code>draft=true</code> for a draft's pin)</td>
 </tr>
 <tr>
 <td><code>verify_manifest</code></td>
@@ -174,7 +177,7 @@ no file access at all (step 3, "With only the gateway"; and
 </tr>
 <tr>
 <td><code>preview_draft</code></td>
-<td>Validate and render a draft in memory; returns errors, warnings and its address in the app</td>
+<td>Validate and render a draft in memory; returns errors, warnings and its address in the app. Opens the workbench panel beside the chat in a host with MCP Apps (<a href="../guides/workbench-in-your-agent.html">The workbench in your agent</a>)</td>
 </tr>
 <tr>
 <td><code>model_impact</code></td>
@@ -425,7 +428,14 @@ library as a draft. It is the route the <code>author_report</code> prompt names:
    each <code>query_model</code> result's <code>binding</code> object under <code>data.&lt;name&gt;</code>, then
    <code>template.html</code> (or <code>app.jsx</code>) with every number a figure bound to it.</li>
 <li><code>preview_draft(kind="reports", path)</code> until <code>ok</code> is <code>true</code>; give the
-   person its <code>url</code>.</li>
+   person its <code>url</code>. In a host with MCP Apps the workbench opens beside the
+   chat with the draft in it (<a href="../guides/workbench-in-your-agent.html">The workbench in your agent</a>), and refreshes on
+   every <code>write_draft_file</code> after this one: keep editing, the person watches.</li>
+<li><strong>The person pins.</strong> A pin they make in the panel arrives as a message
+   ("Pinned on kpi-revenue in the draft of …"). Read every open pin with
+   <code>workbench_state(report=path, draft=true)</code> before your next edit, act on
+   it, then <code>resolve_pin(report=path, pin_id, note, draft=true)</code>. For a
+   report in the library the <code>address_pins</code> prompt walks the same loop.</li>
 <li><code>publish_draft(kind="reports", path, note)</code> once they agree.</li>
 <li><code>build_report(report=path)</code>, then <code>verify_manifest(manifest=&lt;its
    manifest_path&gt;)</code>, as steps 5 and 6 below do for a spec.</li>

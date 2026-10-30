@@ -653,6 +653,23 @@ is dev-state only: it never reaches a build or a trace, and when
 `tracebi dev --classic` is the older stdlib preview server with its own
 `/__workbench` page: the fallback when the web extra is not installed.
 
+**The workbench in the agent (MCP Apps).** Over MCP you need no app open:
+`preview_draft`, `workbench_state` and `build_report` declare the
+`ui://tracebi/workbench` app, so a host that shows MCP Apps (Claude on the web
+and in the desktop app) opens the workbench in the conversation with the
+report or draft you named: the page itself (filters, clicks, the selection
+bar, the trace), each figure's status, the open pins and what you last did.
+It refreshes by itself after each `write_draft_file` or build. When the human
+clicks a figure and pins a note there, it is written to the report path's
+`pins.json` and arrives as a message ("Pinned on kpi-revenue in the draft of
+…"): read it with `workbench_state(report=path, draft=true)` for a draft (no
+`draft` for a library package), act on it, then `resolve_pin(...,
+draft=true)`. The panel only pins, selects and asks; it never edits the
+report, publishes or approves. Its two tools (`workbench_view`,
+`workbench_pin`) are the panel's, not yours. A host without MCP Apps gets the
+same results plus a link: the draft's `url`, or `workbench_url` (the app's
+`/reports/<name>`, which `tracebi dev <name>` serves).
+
 And the iteration protocol itself: `tracebi dev <name>` **blocks** — run it
 in a background shell (or let the human keep it open; the app is their
 view). Then edit and save; the watcher re-renders. Before every editing
@@ -878,8 +895,8 @@ Twenty-seven tools (`tracebi/mcp_server.py`):
 | `validate_report_spec` | Check a spec against the models without loading a row; errors carry a path like `sections[0].data.query.fact` — repair and retry |
 | `render_report_spec` | Validate, build, render to self-contained HTML + lineage manifest; **refuses invalid specs** |
 | `list_reports` | Per-file discovery status, without the reports in folders you cannot view (note: a bare `tracebi mcp` process has not run web discovery, so this may be empty — models and queries are unaffected) |
-| `workbench_state` | The workbench state for an artifact package: figures with provenance, coverage, per-binding cards, the human's **pins**, the exhibit feed, and `pointing` (what the human is pointing at right now: "this") — read it to see what the human flagged in the app before your next edit. Open pins only; `resolved_count` is how many have been resolved |
-| `resolve_pin` | Move one open pin into the resolved list in `pins.json` (`report`, `pin_id`, `note`). Writes only that file — never the report or the warehouse. A write, like `build_report` |
+| `workbench_state` | The workbench state for an artifact package: figures with provenance, coverage, per-binding cards, the human's **pins**, the exhibit feed, and `pointing` (what the human is pointing at right now: "this") — read it to see what the human flagged in the app before your next edit. Open pins only; `resolved_count` is how many have been resolved. `draft=true` reads your report draft at that path instead. Opens the workbench in a host with MCP Apps; `workbench_url` is the link otherwise |
+| `resolve_pin` | Move one open pin into the resolved list in `pins.json` (`report`, `pin_id`, `note`, `draft=true` for a draft's pin). Writes only that file — never the report or the warehouse. A write, like `build_report` |
 | `build_report` | The **publish step for the package lane**: `build_report(report=...)` builds `reports/<name>/` to one self-contained HTML + manifest (exploration stripped, every figure claim validated). Returns `output_path` (the HTML) and `manifest_path` — pass `manifest_path` as `verify_manifest(manifest=...)` and `output_path` as `fetch_artifact(path=...)`. Also returns the figure records, embedded fingerprints, and the `transform_contracts` join; writes only its own artifact and manifest. `format="xlsx"` also writes `<name>.xlsx` and returns `xlsx_path` (pass that as `fetch_artifact(path=...)`). The spreadsheet carries no trace and is not verifiable; `spreadsheet_note` points at the HTML and manifest, which stay the checkable artifact. `format="pdf"` also writes `<name>.pdf` and returns `pdf_path` (pass that as `fetch_artifact(path=...)`). The PDF is a print of that built HTML; its last pages, "How these numbers were made", print each figure's query in one line and a short fingerprint, the sink contracts, the build time and git SHA, and the `tracebi verify` command, but the PDF itself is not verifiable; `pdf_note` points at the HTML and manifest |
 | `fetch_artifact` | Read back an artifact a render or build tool wrote. The argument is `path`: `build_report`'s `output_path` or `manifest_path`, `render_report_spec`'s `html_path` or `manifest_path`, `build_report`'s `xlsx_path`, or `build_report`'s `pdf_path`. HTML and JSON come back as text. An `.xlsx` or a `.pdf` comes back base64-encoded (`encoding="base64"`) with its media type. Every other suffix stays refused |
 | `verify_manifest` | Re-run every recorded query in a rendered manifest. The argument is `manifest`: pass `build_report`'s `manifest_path` (or `render_report_spec`'s `manifest_path`). Classifies `reproduces` / `source_drift` / `model_changed` / `unexplained` / `unverifiable`. Read the report-level `verdict`, not just `ok`: only `reproduces` means a number was re-run and matched — and it names any sections it could not check, so read `verdict_detail` too. `nothing_to_verify` (no data-bearing section — a broken manifest) and `refused_newer_schema` (written by a newer tracebi; not read at all) are not ok; `unverifiable` (every section hand-transformed) is ok but proves nothing |
@@ -887,7 +904,7 @@ Twenty-seven tools (`tracebi/mcp_server.py`):
 | `start_draft` | Create a draft: `kind` is `reports` (a package) or `models` (one `models/<name>.yaml` or `.json`). A path that is published starts as a copy of the published one (`from_published` defaults to that; `false` starts empty); a new path starts empty. A published report with a `report.py` cannot be drafted remotely. Returns the draft's url |
 | `read_draft` | The draft's files as `{name: text}` |
 | `write_draft_file` | Replace one file of a draft with `content`. A report draft takes `report.json`, `template.html`, `style.css` or `script.js`; a model draft takes its `<name>.yaml` or `<name>.json` (writing the other form replaces it). Writes only under `drafts/` |
-| `preview_draft` | Render the draft in memory against the published models plus your draft models. Returns `ok`, `errors`, and the url where the person sees it. Writes nothing |
+| `preview_draft` | Render the draft in memory against the published models plus your draft models. Returns `ok`, `errors`, and the url where the person sees it. Writes nothing. In a host with MCP Apps it opens the workbench beside the chat with the draft in it, live |
 | `model_impact` | For a model draft (`path` = the model name): re-run the recorded queries of every published report that reads it against the draft and compare with each report's last build. Each report is `unchanged`, `moves` (figures, old and new), `breaks` (the error) or `not_built` (listed, never unchanged). Writes nothing |
 | `publish_draft` | Validate and publish: a report must render against the published models, a model must compile. Keeps the version it replaces under `.tracebi/history/` and records a `publish` run. Changes what the app serves, so get the person's go-ahead first. A model that would move or break published reports is refused (`ok: false`, with `impact`) unless you pass `accept_impact=true`; a break needs accepting too, and the accepted impact is recorded in the run. A report goes to `folder` (a library path, created if needed; default its own path). With only Build on that folder the answer is `status: "requested"`: a request for someone with Publish there. A folder that `accepts: checkable` refuses a report whose numbers a query cannot re-run |
 | `list_publish_requests` | Requests to publish a draft into a folder: yours, and those into folders where you hold Publish. `status` filters (`pending`, `approved`, `rejected`) |

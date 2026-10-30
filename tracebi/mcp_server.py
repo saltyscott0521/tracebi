@@ -140,7 +140,7 @@ def _acting():
 _WRITE_TOOLS = frozenset({
     "render_report_spec", "resolve_pin", "build_report", "start_draft",
     "write_draft_file", "preview_draft", "publish_draft", "decide_publish_request",
-    "propose_transform", "export_table",
+    "propose_transform", "export_table", "workbench_pin",
 })
 
 #: Write tools only an admin calls (or a caller with no sign-in role, who
@@ -667,6 +667,7 @@ class WorkbenchStateResult(TypedDict, total=False):
     packages: Any
     error: Any
     errors: Optional[list[str]]
+    workbench_url: Optional[str]
 
 
 class BuildReportResult(TypedDict, total=False):
@@ -683,6 +684,7 @@ class BuildReportResult(TypedDict, total=False):
     pdf_note: Optional[str]
     note: Optional[str]
     errors: Optional[list[str]]
+    workbench_url: Optional[str]
 
 
 class VerifyResult(TypedDict, total=False):
@@ -1289,7 +1291,7 @@ def gateway_verify_manifest(manifest: Any) -> VerifyResult:
         ]}
 
 
-def gateway_workbench_state(report: str = "") -> WorkbenchStateResult:
+def gateway_workbench_state(report: str = "", draft: bool = False) -> WorkbenchStateResult:
     """
     The workbench state for an artifact package: figures with provenance,
     the coverage bar, per-binding cards, the human's PINS, and the exhibit
@@ -1305,12 +1307,25 @@ def gateway_workbench_state(report: str = "") -> WorkbenchStateResult:
     the portal ("steer from chat, see results in the workbench" — pointing
     happens where the evidence is). Exhibits and pins are dev-state only;
     nothing here mints a trace.
+
+    With *draft*, the caller's own report draft at that path instead, with
+    the pins of the report path's workbench (what the workbench panel writes).
     """
     from tracebi.workbench import DISCOVERY_NAME, collect_discovery_state, collect_state
 
     if not report or report == DISCOVERY_NAME:
         with _acting():
             return collect_discovery_state(os.getcwd(), _load_models())
+    if draft:
+        from tracebi import drafts
+        from tracebi.workbench_app import Target
+        try:
+            target = Target(report, True, _draft_owner())
+        except ValueError as exc:
+            return {"errors": [str(exc)]}
+        with _acting():
+            return {**collect_state(str(target.package), drafts.preview_models(
+                target.owner, _load_models()), wb_dir=target.wb), "workbench_url": target.link}
     # A caller-supplied name must never become a path: without this,
     # report='/etc/x' or '../../x' would escape reports/ and collect_state
     # would read — and execute report.py from — an attacker-chosen directory.
@@ -1323,11 +1338,14 @@ def gateway_workbench_state(report: str = "") -> WorkbenchStateResult:
             f"no artifact package at {opened.path} — workbench_state applies to "
             f"reports/<name>/ packages"
         ]}
+    from tracebi.workbench_app import report_url
     with _acting():
-        return collect_state(str(opened.package_dir), _load_models())
+        return {**collect_state(str(opened.package_dir), _load_models()),
+                "workbench_url": report_url(report)}
 
 
-def gateway_resolve_pin(report: str, pin_id: str, note: str = "") -> ResolvePinResult:
+def gateway_resolve_pin(report: str, pin_id: str, note: str = "",
+                        draft: bool = False) -> ResolvePinResult:
     """Move one open pin into the resolved list.
 
     Writes only the workbench's ``pins.json`` — never the report and never
@@ -1340,6 +1358,12 @@ def gateway_resolve_pin(report: str, pin_id: str, note: str = "") -> ResolvePinR
         return {"ok": False, "errors": ["missing pin id"]}
     if not report or report == DISCOVERY_NAME:
         name = DISCOVERY_NAME
+    elif draft:                     # the draft's pins live in its report path's workbench
+        from tracebi.workbench_app import Target
+        try:
+            name = Target(report, True, _draft_owner()).report
+        except ValueError as exc:
+            return {"ok": False, "errors": [str(exc)]}
     else:
         from tracebi.report_paths import open_report
         opened = open_report(report, purpose="manage")
@@ -1446,6 +1470,8 @@ def _build_report(
         ],
         "transform_contracts": m.get("transform_contracts") or {},
     }
+    from tracebi.workbench_app import report_url
+    result["workbench_url"] = report_url(report)
     if format == "xlsx":
         result["xlsx_path"] = str(xlsx)
         result["spreadsheet_note"] = _XLSX_NOTE
@@ -1598,8 +1624,11 @@ def gateway_read_draft(kind: str, path: str) -> DraftResult:
 def gateway_write_draft_file(kind: str, path: str, file: str,
                              content: str) -> DraftResult:
     from tracebi import drafts
-    return _draft_call(drafts.write_draft_file, _draft_owner(), kind, path,
-                       file, content)
+    result = _draft_call(drafts.write_draft_file, _draft_owner(), kind, path,
+                         file, content)
+    if result.get("ok"):            # the workbench panel's feed: what the agent just changed
+        _show_action("write_draft_file", f"Wrote {file} in the draft of {kind}/{path}")
+    return result
 
 
 def gateway_preview_draft(kind: str, path: str) -> DraftResult:
@@ -2115,6 +2144,83 @@ def gateway_export_table(source: str, table: str, to: str) -> ExportResult:
     return {"ok": True, **done}
 
 
+# ── The workbench panel (MCP Apps) ──────────────────────────────────────────
+# ui://tracebi/workbench, beside the chat in a host that renders MCP Apps. The
+# panel calls these two through the host bridge; the agent is not shown them.
+
+
+class WorkbenchViewResult(TypedDict, total=False):
+    ok: Optional[bool]
+    changed: Optional[bool]
+    version: Optional[str]
+    target: Any
+    html: Optional[str]
+    figures: Any
+    pins: Any
+    resolved: Any
+    feed: Any
+    errors: Optional[list[str]]
+
+
+class WorkbenchPinResult(TypedDict, total=False):
+    ok: Optional[bool]
+    pin: Any
+    message: Optional[str]
+    errors: Optional[list[str]]
+
+
+def gateway_workbench_view(report: str = "", draft: bool = False,
+                           since: str = "") -> WorkbenchViewResult:
+    """What the workbench panel shows: the working page, its figures, the open
+    pins and the feed (tracebi/workbench_app.py). Read-only."""
+    from tracebi.workbench_app import view
+    try:
+        return view(report, draft, since, _draft_owner(), _load_models())
+    except ValueError as exc:
+        return {"ok": False, "errors": [str(exc)]}
+
+
+def gateway_workbench_pin(report: str = "", figure: str = "", note: str = "",
+                          draft: bool = False) -> WorkbenchPinResult:
+    """The person's pin from the panel: pins.json only."""
+    from tracebi.workbench_app import pin
+    try:
+        return pin(report, draft, figure, note, _draft_owner())
+    except ValueError as exc:
+        return {"ok": False, "errors": [str(exc)]}
+
+
+def _workbench_apps():
+    """The MCP Apps extension carrying the workbench panel's resource."""
+    from mcp.server.apps import Apps
+
+    from tracebi.workbench_app import APP_URI, app_html
+    apps = Apps()
+    apps.add_html_resource(
+        APP_URI, app_html(), name="workbench", title="TraceBi workbench",
+        description=("The report or draft the agent is working on, live, with its "
+                     "figures, the person's pins and what the agent last did."),
+        prefers_border=False)
+    return apps
+
+
+def _hide_app_tools_without_apps(server) -> None:
+    """A client that did not negotiate MCP Apps is not shown the panel's tools:
+    nothing would call them but the agent, which has workbench_state."""
+    from mcp.server.apps import client_supports_apps
+    from mcp.types import ListToolsResult, PaginatedRequestParams
+
+    from tracebi.workbench_app import APP_TOOLS
+
+    async def list_tools(ctx, params):
+        tools = await server.list_tools()
+        if not client_supports_apps(ctx):
+            tools = [t for t in tools if t.name not in APP_TOOLS]
+        return ListToolsResult(tools=tools)
+
+    server._lowlevel_server.add_request_handler("tools/list", PaginatedRequestParams, list_tools)
+
+
 def build_server(token: Optional[str] = None, oauth=None):
     """
     Register the gateway operations as MCP tools.
@@ -2154,6 +2260,11 @@ def build_server(token: Optional[str] = None, oauth=None):
                               idempotentHint=True, openWorldHint=True)
     _WRITE_PINS = ToolAnnotations(readOnlyHint=False, destructiveHint=False,
                                   idempotentHint=False, openWorldHint=False)
+    # The authoring tools open the workbench panel in a host that renders MCP
+    # Apps; the panel's own two tools are for it alone (visibility "app").
+    from tracebi.workbench_app import APP_URI
+    _WORKBENCH_UI = {"ui": {"resourceUri": APP_URI}}
+    _WORKBENCH_APP_ONLY = {"ui": {"resourceUri": APP_URI, "visibility": ["app"]}}
 
     auth_kwargs: dict[str, Any] = {}
     if oauth is not None:
@@ -2181,6 +2292,7 @@ def build_server(token: Optional[str] = None, oauth=None):
     server = MCPServer(
         name="tracebi",
         **auth_kwargs,
+        extensions=[_workbench_apps()],
         instructions=(
             "TraceBi semantic gateway. Call get_context first (start with "
             "brief=true — the token-lean tier, about half the payload) — it "
@@ -2381,7 +2493,7 @@ def build_server(token: Optional[str] = None, oauth=None):
     )(gateway_reports)
     _tool(
         name="workbench_state", title="Workbench state", annotations=_READ_WAREHOUSE,
-        structured_output=True,
+        structured_output=True, meta=_WORKBENCH_UI,
         description=(
             "The workbench state for an artifact package (reports/<name>/): "
             "figures with provenance, coverage, per-binding cards, the "
@@ -2393,7 +2505,10 @@ def build_server(token: Optional[str] = None, oauth=None):
             "human runs tracebi dev with no name, and it returns the "
             "workspace-level state instead — warehouse tables, sink-contract "
             "summaries, models, packages, and the workspace feed (your "
-            "show() exhibits) and the human's notes."
+            "show() exhibits) and the human's notes. draft=true reads your "
+            "report draft at that path, with the pins the person made on it. "
+            "In a host that shows MCP Apps this opens the workbench beside the "
+            "chat; workbench_url is the link otherwise."
         ),
     )(gateway_workbench_state)
     _tool(
@@ -2405,12 +2520,12 @@ def build_server(token: Optional[str] = None, oauth=None):
             "(the current actor) and the note. Nothing is deleted, and "
             "nothing but pins.json is written — not the report, not the "
             "warehouse. An unknown id is an error. workbench_state then "
-            "lists open pins only."
+            "lists open pins only. draft=true for a pin on your draft."
         ),
     )(gateway_resolve_pin)
     _tool(
         name="build_report", title="Build an artifact package (writes the artifact)",
-        annotations=_RENDER, structured_output=True,
+        annotations=_RENDER, structured_output=True, meta=_WORKBENCH_UI,
         description=(
             "Build an artifact package (reports/<name>/) to one "
             "self-contained HTML + its manifest — the publish step. The "
@@ -2513,12 +2628,15 @@ def build_server(token: Optional[str] = None, oauth=None):
     )(gateway_write_draft_file)
     _tool(
         name="preview_draft", title="Preview a draft", annotations=_READ_WAREHOUSE,
-        structured_output=True,
+        structured_output=True, meta=_WORKBENCH_UI,
         description=(
             "Render the draft in memory against the workspace's models (no "
             "file, no manifest) and return ok, errors, and the draft's url, "
             "where the person sees it. A model draft is validated, with no "
-            "page."
+            "page. In a host that shows MCP Apps a report draft opens in the "
+            "workbench beside the chat and follows each write_draft_file; a "
+            "pin the person makes there arrives as a message — read it with "
+            "workbench_state(report=path, draft=true)."
         ),
     )(gateway_preview_draft)
     _tool(
@@ -2713,6 +2831,28 @@ def build_server(token: Optional[str] = None, oauth=None):
             "The person's go-ahead comes first."
         ),
     )(gateway_export_table)
+    _tool(
+        name="workbench_view", title="Workbench panel: what it shows",
+        annotations=_READ_WAREHOUSE, structured_output=True, meta=_WORKBENCH_APP_ONLY,
+        description=(
+            "For the workbench panel (ui://tracebi/workbench), not the agent: the "
+            "working page of a report (draft=true: your draft at that path), its "
+            "figures with their status, the open pins and the feed. since=<version> "
+            "answers changed=false until something it shows changes. Read-only; "
+            "the agent reads the same state with workbench_state."
+        ),
+    )(gateway_workbench_view)
+    _tool(
+        name="workbench_pin", title="Workbench panel: pin a note (writes pins.json)",
+        annotations=_WRITE_PINS, structured_output=True, meta=_WORKBENCH_APP_ONLY,
+        description=(
+            "For the workbench panel, not the agent: the person's note on one "
+            "figure (figure=<its id>), or with no figure a note for the agent, "
+            "written to the report path's pins.json, where workbench_state and "
+            "address_pins read it. Writes nothing else."
+        ),
+    )(gateway_workbench_pin)
+    _hide_app_tools_without_apps(server)
 
     # Resources — reference material a client can pull into context. The guide
     # puts the authoring SOP on the surface itself (an MCP-only agent never
