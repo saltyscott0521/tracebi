@@ -4,6 +4,82 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-30 — Pages compile at build and ship lean (LEAN)
+
+The third audit's swing A, approved by the owner. An app.jsx page inlined
+Sucrase and compiled itself in the reader's browser (react.min.js 295 KB),
+Tailwind's browser build (259 KB) generated its CSS there, and the full
+ECharts kit (932 KB) rode on every page with a chart.
+
+**The compiler: mini-racer, an embedded V8.** What was weighed: an esbuild
+wheel (`esbuild` 0.1.2 / `esbuild-py` 0.1.6 on PyPI are small unofficial
+bindings, JSX only, so Tailwind would still need its 100 MB standalone CLI,
+`tailwindcss-bin`); `quickjs` (last release 1.19.4, no wheel for Python
+3.13, so a C compiler on install); `dukpy` (Duktape, ES5-era, too old for
+Tailwind 4); `mini-racer` (V8, maintained, py3-none wheels for Linux,
+macOS and Windows, x86-64 and arm64). One engine runs both compilers that
+already exist as JavaScript: the vendored Sucrase (now its own bundle,
+`sucrase.min.js`, one set of options) and Tailwind 4.1.11's own `compile()`
+with its four stylesheets (`tailwind-compiler.min.js`, never inlined). The
+page and the build therefore run the same compiler. `mini-racer>=0.12.4,<0.13`
+is in `reports`, `analyst`, `all` and `dev`: 0.12.4 is the last release with a
+Linux aarch64 wheel (0.13+ ship an sdist there that builds V8 from source),
+and the Docker image may run on arm64. A context is opened per compile and
+closed (`with MiniRacer()`): an unclosed one keeps the interpreter from
+exiting. `compile_app` is cached per source (lru_cache), so dev and preview
+pay it once per edit; it costs ~0.1 s.
+
+**The fallback.** Without mini-racer the build ships the source,
+`sucrase.min.js` and `tailwind.min.js` and the page compiles itself, as
+before; the manifest's `app_compile` is `{"at": "page", "reason"}` (else
+`{"at": "build", "by": [Sucrase 3.35.0, Tailwind CSS 4.1.11]}`) and the build
+prints the reason. A compiled page carries `<script id="tracebi-app">` defining
+`window.__tbApp(module, exports, require)`, which the runtime calls where it
+used to compile; `</script` in the output is written `<\/script`.
+
+**A syntax error fails the build** (`app.jsx does not compile: Unexpected
+token (12:4)`), where the page used to ship and say so to the reader. Sucrase
+does not check that tags match, so a mismatched close still builds.
+
+**Tailwind's candidates are the source's tokens** (split on whitespace,
+quotes, backticks, braces and `;`), Tailwind's own rule: a class assembled
+at run time is not seen. Checked against the browser build on all nine
+shipped app reports, every view opened: every class the browser build wrote
+a rule for has one at build (12 to 96 per report, none missing), and the
+first screens are pixel-identical but for the build time. The CSS goes at the
+end of the head, where the browser build put its own.
+
+**ECharts** keeps what `optionFor` draws (bar, line, scatter, effectScatter,
+pictorialBar; pie, funnel, treemap, sunburst), the shipped heatmap and
+sankey, the components the builder uses and those the guides promise a
+`configureChart` patch (legend, dataZoom slider, brush, visualMap, markArea,
+toolbox), both renderers. Keeping the guides' list costs ~50 KB; dropping it
+would have broken what agents are told. The floor is ECharts' core: 932 →
+835 KB. A left-out series draws nothing, silently, in a production build (as
+an unknown `type` always did); the guides now name the set.
+
+**Measured** on the reference workspace, built before (ad5f63a) and after,
+Chromium headless, 1280×900, median of 5 loads; first chart is the first
+ECharts `<svg>`/`<canvas>` in the DOM after navigation:
+
+| Report | bytes before → after | gzip before → after | 1x ms | 4x ms |
+|---|---|---|---|---|
+| portfolio_showcase (app) | 2,115,514 → 1,570,797 | 643,397 → 500,213 | 425 → 290 | 1,706 → 1,189 |
+| portfolio_desk (app) | 2,012,795 → 1,460,596 | 627,573 → 483,868 | 502 → 324 | 1,442 → 994 |
+| portfolio_dashboard (app) | 1,977,978 → 1,422,138 | 620,015 → 475,989 | 428 → 326 | 1,512 → 1,026 |
+| portfolio_overview (app) | 1,977,092 → 1,421,543 | 620,315 → 476,337 | 475 → 292 | 1,332 → 941 |
+| portfolio_concentration (app) | 1,981,350 → 1,424,419 | 619,774 → 475,487 | 449 → 335 | 1,523 → 1,089 |
+| mrr_dashboard (app) | 2,020,192 → 1,464,356 | 650,723 → 506,328 | 428 → 293 | 1,340 → 1,034 |
+| aum_by_branch (app) | 2,085,857 → 1,528,714 | 694,744 → 549,800 | 454 → 280 | 1,486 → 1,296 |
+| aum_by_region (app) | 1,967,413 → 1,409,817 | 618,321 → 474,051 | 462 → 342 | 1,416 → 997 |
+| affordability (template) | 1,705,095 → 1,608,014 | 537,418 → 506,892 | 839 → 718 | 2,447 → 2,567 |
+| portfolio_book (template) | 1,433,909 → 1,336,828 | 473,123 → 442,393 | 333 → 278 | 932 → 987 |
+| cohort_brief (template) | 1,460,794 → 1,363,713 | 500,396 → 470,119 | 284 → 261 | 1,046 → 1,008 |
+
+Long tasks at 4x on the showcase: 2,456 → 1,786 ms. A template page gains
+only the ECharts bytes (its timings move within noise). What is left is
+ECharts' core, tracebi.js (273 KB) and hydration, not compilation.
+
 ## 2026-10-30 — The agent path works end to end on the shipped workspace, on a lean payload (AGENT-LOOP)
 
 The third audit walked an agent over the reference workspace and found the

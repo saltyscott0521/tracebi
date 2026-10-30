@@ -689,9 +689,10 @@ class TemplatePackage:
         else:
             self.schedule = None
 
-        # The React lane: the page is app.jsx, compiled in the browser from
-        # the fixed kit. The template is a generated shell — a mount point and
-        # the kit figures' claims, read from the source without running it.
+        # The React lane: the page is app.jsx, built from the fixed kit and
+        # compiled at build (app_lane.compile_app). The template is a
+        # generated shell — a mount point and the kit figures' claims, read
+        # from the source without running it.
         self.app_source: Optional[str] = None
         self.app_imports: dict = {}
         self.app_icons: dict = {}
@@ -1063,6 +1064,14 @@ class TemplatePackage:
                                    else ARTIFACT_MANIFEST_SCHEMA_VERSION)
         manifest.stage = "final"
         manifest.figures = [_figure_record(f) for f in figs]
+        if self.app_source is not None:
+            # Compiled once, at build (no Node); where that is impossible the
+            # page compiles it, and the manifest says which it was.
+            from tracebi.reports.app_lane import compile_app
+            manifest.app_compile = compile_app(self.app_source).record
+            if manifest.app_compile["at"] == "page":
+                print(f"[tracebi] {self.name}: {manifest.app_compile['reason']}.",
+                      file=sys.stderr)
         if scenarios:
             manifest.scenarios = [_scenario.manifest_record(sc) for sc in scenarios]
 
@@ -1869,8 +1878,9 @@ class TemplatePackage:
         libs: list[str] = []
         seen: set[str] = set()
         if self.app_source is not None:
-            from tracebi.reports.app_lane import libs_for
-            for lib in libs_for(self.app_imports):
+            from tracebi.reports.app_lane import compile_app, libs_for
+            compiled = compile_app(self.app_source).js is not None
+            for lib in libs_for(self.app_imports, compiled=compiled):
                 libs.append(lib)
                 seen.add(lib)
         for lib in self.libs:
@@ -1910,9 +1920,13 @@ class TemplatePackage:
         from tracebi.reports.brand import brand_css
         from tracebi.reports.stack import apply_stack, project_theme_css
 
+        app_css = ""
         if self.app_source is not None:
-            from tracebi.reports.app_lane import app_blocks_html
-            extra_blocks_html += app_blocks_html(self.app_source, self.app_icons)
+            from tracebi.reports.app_lane import app_blocks_html, compile_app
+            compiled = compile_app(self.app_source)
+            app_css = compiled.css or ""
+            extra_blocks_html += app_blocks_html(self.app_source, self.app_icons,
+                                                 compiled.js)
         if self.charts:
             extra_blocks_html += embed_json(self.charts, "tracebi-charts") + "\n"
         mark = brand()
@@ -1936,6 +1950,7 @@ class TemplatePackage:
             brand_css=brand_css(mark, house.THEMES[look]["dark_card"]),
             default_mode=mark.get("mode") or house.THEMES[look]["mode"],
             default_density=house.THEMES[look]["density"],
+            app_css=app_css,
         )
 
 

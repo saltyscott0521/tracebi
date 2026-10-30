@@ -68,7 +68,13 @@ snowflake = ["snowflake-connector-python>=3.0"]
 # pyarrow: Parquet round-trip for large-detail artifacts. It is the reference
 # implementation and preserves pandas dtypes exactly, which the receipt depends
 # on (see tracebi/reports/parquet_embed.py).
-reports   = ["openpyxl>=3.1.5", "matplotlib>=3.10.9", "pyarrow>=14.0"]
+# mini-racer: an embedded V8 the build compiles an app.jsx in (Sucrase) and
+# generates its Tailwind CSS with, so no Node is needed (app_lane.compile_app).
+# Held below 0.13: 0.12.4 is the last release with a wheel for every platform
+# (0.13+ has none for Linux aarch64, where pip would build V8 from source).
+# Where it is not installed, the page compiles itself, as before.
+reports   = ["openpyxl>=3.1.5", "matplotlib>=3.10.9", "pyarrow>=14.0",
+             "mini-racer>=0.12.4,<0.13"]
 # Playwright prints a built package (charts run). WeasyPrint stays for
 # HTMLRenderer.render_pdf(), which prints the legacy renderer and runs no JS.
 pdf       = ["playwright>=1.40", "weasyprint>=57"]
@@ -89,6 +95,7 @@ analyst = [
     "openpyxl>=3.1.5",
     "matplotlib>=3.10.9",
     "pyarrow>=14.0",
+    "mini-racer>=0.12.4,<0.13",
     "sqlalchemy>=2.0",
     "alembic>=1.13",
     "networkx>=3.0",
@@ -100,6 +107,7 @@ all = [
     "openpyxl>=3.1.5",
     "matplotlib>=3.10.9",
     "pyarrow>=14.0",
+    "mini-racer>=0.12.4,<0.13",
     "sqlalchemy>=2.0",
     "alembic>=1.13",
     "psycopg[binary]>=3.1",
@@ -133,6 +141,7 @@ dev = [
     "markdown>=3.5",
     "openpyxl>=3.1.5",
     "pyarrow>=14.0",
+    "mini-racer>=0.12.4,<0.13",
     "matplotlib>=3.10.9",
     "networkx>=3.0",
     "apscheduler>=3.10",
