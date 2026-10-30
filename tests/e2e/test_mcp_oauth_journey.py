@@ -361,7 +361,8 @@ def test_the_role_comes_from_the_groups_and_a_viewer_only_reads(signin, idp):
         "publish_draft": {"kind": "reports", "path": "x"},
         "decide_publish_request": {"request_id": "r", "approve": True},
         "propose_transform": {"name": "x", "sql": "", "contract_yaml": "", "note": "n"},
-        "export_table": {"source": "warehouse", "table": "t", "to": "crm"}}
+        "export_table": {"source": "warehouse", "table": "t", "to": "crm"},
+        "workbench_pin": {"report": "r", "figure": "f", "note": "n"}}
     assert set(arguments) == _WRITE_TOOLS
     for name, args in arguments.items():
         refused = tool(c, token, session, name, **args)

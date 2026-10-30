@@ -320,7 +320,10 @@ the tables a person allowed agents to read, it reads the transforms that exist
 (`read_transform`) and proposes a new one or a change an admin approves
 (`propose_transform`), dry-run at once against a throwaway copy so both see
 what it would make. It is read-and-compute only: nothing it can call writes
-to the warehouse.
+to the warehouse. In a host that shows MCP Apps (Claude on the web and in the
+desktop app), the workbench opens in the conversation: the report the agent is
+editing, live, where you click a figure and pin a note the agent reads next
+([the workbench in your agent](docs/guides/workbench-in-your-agent.md)).
 
 ```bash
 pip install -e ".[mcp]"

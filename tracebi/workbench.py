@@ -827,7 +827,7 @@ def frame_profile(df) -> dict:
 # ── The one state builder ───────────────────────────────────────────────────
 
 
-def collect_state(package_dir: str, models: dict) -> dict:
+def collect_state(package_dir: str, models: dict, wb_dir: Optional[str] = None) -> dict:
     """Build the full workbench state for one artifact package (v2 §2.5).
 
     The dict every workbench surface renders from — the dev server's
@@ -837,6 +837,8 @@ def collect_state(package_dir: str, models: dict) -> dict:
     memory (exploration kept, ids assigned) to extract the figure claims;
     joins the exhibit feed and pins. Nothing is written except the
     on-demand workbench directory itself — dev-state only, no receipts.
+    *wb_dir* names the workbench whose pins and feed it joins, for a package
+    that is not in the library (a draft: its report path's workbench).
     """
     from tracebi.reports.app_lane import lint_jsx_numbers
     from tracebi.reports.embed import stamp
@@ -897,7 +899,7 @@ def collect_state(package_dir: str, models: dict) -> dict:
     # Keyed by the DIRECTORY path below reports/ ("finance/weekly"), not the
     # declaration's "name": the address the dev server and discovery share.
     from tracebi.report_paths import report_name_for_dir
-    wb = os.environ.get("TRACEBI_WORKBENCH_DIR") or workbench_dir(
+    wb = wb_dir or os.environ.get("TRACEBI_WORKBENCH_DIR") or workbench_dir(
         os.getcwd(), report_name_for_dir(str(package_dir)))
     pins = read_pins(wb)
     resolved_pins = read_resolved(wb)

@@ -568,6 +568,21 @@ What breaks if a table or measure goes: `downstream(node='table:<warehouse>.<tab
 built report figure that reads it, from the builds' manifests; `model_impact` on a
 what-if model draft proves it, and `delete_draft(kind, path)` drops the draft after.
 
+**The workbench in the agent (MCP Apps).** `preview_draft`,
+`workbench_state` and `build_report` declare the `ui://tracebi/workbench` app:
+a host that shows MCP Apps (Claude on the web and in the desktop app) opens
+the workbench in the conversation with that report or draft, live (the page
+itself, each figure's status, the open pins, what you last did; it refreshes
+after each `write_draft_file` or build). A pin the human makes there on a
+figure lands in the report path's `pins.json` and arrives as a message
+("Pinned on kpi-revenue in the draft of …"): read it with
+`workbench_state(report=path, draft=true)` (no `draft` for a library
+package), act on it, then `resolve_pin(..., draft=true)`. The panel only pins,
+selects and asks; its two tools (`workbench_view`, `workbench_pin`) are the
+panel's, not yours. Without MCP Apps you get the same results plus a link: the
+draft's `url`, or `workbench_url` (the app's `/reports/<name>`; `tracebi dev
+<name>` serves it).
+
 If you cannot reach the workspace's files, draft over the gateway instead:
 `start_draft`, `write_draft_file`, `preview_draft` (give the person the url it
 returns), then `publish_draft` once they agree. `start_draft` of a path that is
