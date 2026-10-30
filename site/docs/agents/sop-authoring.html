@@ -105,8 +105,9 @@ from it.</p>
 <code>answer_question</code>, <code>address_pins</code>) that run this procedure for you. The MCP
 <code>tools/list</code> call is the source of truth if this table drifts. This SOP walks
 the spec path. A report package is the same loop with <code>build_report</code>. Over a
-hosted connection, the draft tools are how a package reaches the server
-(<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>, <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>).</p>
+hosted connection, the draft tools are how a package reaches the server, with
+no file access at all (step 3, "With only the gateway"; and
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>, <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>).</p>
 <table>
 <thead>
 <tr>
@@ -117,7 +118,7 @@ hosted connection, the draft tools are how a package reaches the server
 <tbody>
 <tr>
 <td><code>get_context</code></td>
-<td>The full vocabulary, optionally with one model's schema. Pass <code>brief</code> for the smaller version.</td>
+<td>The full vocabulary, optionally with one model's schema. Pass <code>brief</code> for the smaller version; it names what it left out, and <code>topic=&lt;name&gt;</code> returns one of those sections (<code>topic="presentation"</code>, the page grammar, before you write a page).</td>
 </tr>
 <tr>
 <td><code>list_models</code></td>
@@ -169,7 +170,7 @@ hosted connection, the draft tools are how a package reaches the server
 </tr>
 <tr>
 <td><code>list_drafts</code> · <code>start_draft</code> · <code>read_draft</code> · <code>write_draft_file</code></td>
-<td>Your drafts on the server: start one (empty, or a copy of a published report or model), read it, write one allowed file</td>
+<td>Your drafts on the server: start one (a copy of the published report or model when its path is published, else empty), read it, write one allowed file</td>
 </tr>
 <tr>
 <td><code>preview_draft</code></td>
@@ -205,11 +206,11 @@ hosted connection, the draft tools are how a package reaches the server
 </tr>
 <tr>
 <td><code>read_transform</code></td>
-<td>One transform's SQL (or Python) and <code>.contract.yaml</code>, its form, the tables it writes, what its last run read and its column lineage; code, never rows</td>
+<td>One transform's SQL (or Python) and <code>.contract.yaml</code>, its form, the tables it writes, what its last run read and its column lineage; code, never rows. <code>change</code> is the call to make, or names each <code>-- source:</code> line that blocks one</td>
 </tr>
 <tr>
 <td><code>propose_transform</code></td>
-<td>Store <code>transforms/&lt;name&gt;.sql</code> and its <code>.contract.yaml</code> as a code request (<code>change=true</code> for a change to an existing SQL transform), dry-run at once against a throwaway copy (<code>dry_run</code>: tables, first rows, checks, lineage, error); an admin approves one that passed and it runs once</td>
+<td>Store <code>transforms/&lt;name&gt;.sql</code> and its <code>.contract.yaml</code> as a code request (<code>change=true</code> for a change to an existing SQL transform), dry-run at once against a throwaway copy (<code>dry_run</code>: each table <code>new</code>, <code>changed</code> or <code>unchanged</code>, first rows of the new and changed, checks, lineage, error); SQL that does not parse is the one error returned; an admin approves one that passed and it runs once</td>
 </tr>
 <tr>
 <td><code>export_table</code></td>
@@ -273,8 +274,12 @@ order (<a href="../agents/sop-onboarding.html">SOP: Onboard a source, from a con
    <code>review_url</code>. Nothing real has run: an admin approves it and it runs once.
    Until then its tables do not exist.</li>
 <li><strong>Draft the model.</strong> <code>start_draft(kind="models", path=&lt;name&gt;)</code> over the
-   sunk tables (<code>describe_table</code> gives their columns), <code>preview_draft</code>, then
-   <code>publish_draft</code> once the person agrees. Then go on to step 1.</li>
+   sunk tables (<code>describe_table</code> gives their columns): a model that is
+   published starts from its published copy, so add to it rather than
+   rewrite it. <code>write_draft_file</code>, <code>preview_draft</code>, <code>model_impact(path)</code> for
+   a model that exists, then <code>publish_draft</code> once the person agrees (with
+   <code>accept_impact=true</code> only after they have seen the impact). Publish the
+   model before a report that uses it. Then go on to step 1.</li>
 </ol>
 <h2 id="1-load-the-contract-with-get_context">1. Load the contract with <code>get_context</code></h2>
 <p>Always the first call. Nothing outside what it returns will validate.</p>
@@ -408,6 +413,25 @@ colour (<a href="../reference/chart-style.html">House themes and chart style</a>
   TraceBi refusing to inflate sums. Investigate or escalate; don't flip the
   flag.</li>
 </ul>
+<h3 id="with-only-the-gateway-a-package-through-drafts">With only the gateway: a package through drafts</h3>
+<p>With no file access (a hosted connection), a report package reaches the
+library as a draft. It is the route the <code>author_report</code> prompt names:</p>
+<ol>
+<li><code>get_context(topic="presentation")</code> for the page grammar: <code>data-tb-*</code>
+   figures, the kit, <code>report.json</code>.</li>
+<li><code>start_draft(kind="reports", path="&lt;project&gt;/&lt;name&gt;")</code>. A new path starts
+   empty; a published one starts from its published copy.</li>
+<li><code>write_draft_file(kind="reports", path, file="report.json", content)</code> with
+   each <code>query_model</code> result's <code>binding</code> object under <code>data.&lt;name&gt;</code>, then
+   <code>template.html</code> (or <code>app.jsx</code>) with every number a figure bound to it.</li>
+<li><code>preview_draft(kind="reports", path)</code> until <code>ok</code> is <code>true</code>; give the
+   person its <code>url</code>.</li>
+<li><code>publish_draft(kind="reports", path, note)</code> once they agree.</li>
+<li><code>build_report(report=path)</code>, then <code>verify_manifest(manifest=&lt;its
+   manifest_path&gt;)</code>, as steps 5 and 6 below do for a spec.</li>
+</ol>
+<p>A measure the question needs and the model lacks is a model draft first
+(step 0.5's route), published before the report that uses it.</p>
 <h2 id="4-validate-and-repair">4. Validate and repair</h2>
 <pre><code class="language-json">{ &quot;tool&quot;: &quot;validate_report_spec&quot;, &quot;arguments&quot;: { &quot;spec&quot;: { &quot;name&quot;: &quot;…&quot;, &quot;sections&quot;: [ &quot;…&quot; ] } } }
 </code></pre>

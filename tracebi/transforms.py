@@ -171,7 +171,8 @@ def render_sql(text: str, root: str, where: str = "the transform") -> str:
 
 def source_directives(text: str, where: str = "the transform") -> list[dict]:
     """The ``-- source:`` lines of a SQL transform's header (the comment lines
-    above its first statement), each as ``{ref, connection, table, fallback}``.
+    above its first statement), each as ``{ref, connection, table, fallback,
+    line}``.
     A connection with no table, a repeated source, or a ``-- source:`` line
     below the header is an error naming the line: a directive the runner
     would skip must not read as one it obeys."""
@@ -203,8 +204,31 @@ def source_directives(text: str, where: str = "the transform") -> list[dict]:
             raise TransformError(f"{where}: line {number}: {ref} is named twice")
         found.append({"ref": ref, "connection": parsed.group("connection"),
                       "table": parsed.group("table"),
-                      "fallback": parsed.group("fallback")})
+                      "fallback": parsed.group("fallback"), "line": number})
     return found
+
+
+def sources_agents_may_not_read(text: str) -> list[str]:
+    """The ``-- source:`` lines of a SQL transform naming a table agents may
+    not read (:func:`tracebi.connections.agent_may_read`), each as ``line N:
+    -- source: <connection>.<table>``. While one is there, an agent cannot
+    propose a change that keeps reading it. A header the runner refuses
+    names none: a proposal's own checks say what is wrong with it."""
+    from tracebi.connections import agent_may_read
+
+    try:
+        directives = source_directives(text)
+    except TransformError:
+        return []
+    blocked = []
+    for d in directives:
+        try:
+            may = agent_may_read(d["connection"], d["table"])
+        except Exception:  # noqa: BLE001 — a connection that will not load admits nothing
+            may = False
+        if not may:
+            blocked.append(f"line {d['line']}: -- source: {d['ref']}")
+    return blocked
 
 
 _DROP = re.compile(r'^\s*DROP\s+(?:TABLE|VIEW)\s+(?:IF\s+EXISTS\s+)?'

@@ -15,3 +15,8 @@ name: crm
 label: CRM (Postgres)
 type: postgres
 url: ${TRACEBI_CRM_URL}
+# Agents may read the one table holdings_transform.sql reads, so an agent can
+# propose a change to it (propose_transform). With the URL unset, a dry run
+# reads the snapshot, as the transform does.
+agents:
+  tables: [issuer_ratings]

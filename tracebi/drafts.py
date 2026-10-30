@@ -265,10 +265,12 @@ def model_draft_status(path: str) -> "tuple[bool, Optional[str]]":
 
 
 def start_draft(owner: str, kind: str, path: str,
-                from_published: bool = False, theme: Optional[str] = None) -> dict:
-    """Create the draft, empty or as a copy of the published one. A new
-    report draft may start with its house *theme* (ledger, nightdesk,
-    signal): its report.json begins as ``{"theme": …}``."""
+                from_published: Optional[bool] = False,
+                theme: Optional[str] = None) -> dict:
+    """Create the draft, empty or as a copy of the published one
+    (*from_published* None: a copy when one is published and no *theme* is
+    given). A new report draft may start with its house *theme* (ledger,
+    nightdesk, signal): its report.json begins as ``{"theme": …}``."""
     kind = _kind(kind)
     if theme is not None:
         from tracebi.reports import house
@@ -280,10 +282,13 @@ def start_draft(owner: str, kind: str, path: str,
                              f"{', '.join(house.THEMES)}")
     where = draft_dir(owner, kind, path)
     if where.exists():
-        raise DraftError(f"draft {kind}/{path} already exists: read_draft it, "
-                         f"or delete it to start over")
+        raise DraftError(f"draft {kind}/{path} already exists: read_draft(kind={kind!r}, "
+                         f"path={path!r}) it and write_draft_file over it, or delete it "
+                         f"to start over")
     if kind == "models" and (blocker := model_python_blocker(path)):
         raise DraftError(blocker)
+    if from_published is None:
+        from_published = theme is None and bool(_published(kind, path))
     files: dict[str, str] = {}
     if kind == "reports":
         _require_folder("build", path)

@@ -13,3 +13,7 @@ name: bank
 label: Core banking (SQLite file)
 type: sql
 url: ${TRACEBI_BANK_URL:-sqlite:///inputs/bank.sqlite}
+# Agents may read the six tables wealth_transform.sql reads, so an agent can
+# propose a change to it (propose_transform); the bank holds nothing else.
+agents:
+  tables: [branches, clients, products, accounts, holdings, activities]

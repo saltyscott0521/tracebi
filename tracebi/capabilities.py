@@ -1541,19 +1541,28 @@ def _house_offer() -> str:
     return OFFER
 
 
-def describe(brief: bool = False) -> dict:
+#: The sections the brief tier leaves out, each a topic of its own.
+BRIEF_OMITS = ("presentation", "schedule", "connect", "templates", "spreadsheet", "pdf",
+               "cheat_sheets", "report_sections", "dataset_verbs")
+
+
+def describe(brief: bool = False, topic: Optional[str] = None) -> dict:
     """
     Return TraceBi's vocabulary as plain, JSON-serializable data.
 
     Generated from the code, so it stays correct as the framework changes.
 
-    ``brief=True`` returns the token-lean tier (~40% of the full payload):
-    the semantic model, the figure/presentation grammar, transform
-    contracts, and the project conventions — everything the package-first
-    authoring loop needs. Omitted: the legacy section classes, the DataSet
-    verb catalogue, and the Python cheat sheets, which matter only when
-    writing Python against the library directly; the brief payload names
-    them so an agent knows more exists.
+    ``brief=True`` returns the token-lean tier (at most 45% of the full
+    payload): the semantic model, transform contracts, the project
+    conventions, drafts and the lessons — what discovering, querying and
+    drafting need. Omitted (:data:`BRIEF_OMITS`): the page grammar
+    (``presentation``), schedules, connecting, the init templates, the
+    spreadsheet and PDF lanes, and the Python-only catalogues; the brief
+    payload names them as topics.
+
+    ``topic=<name>`` returns one section of the full payload,
+    ``{tracebi_version, topic, <name>: …}``; an unknown name raises
+    ``ValueError`` naming the topics.
     """
     import pandas as pd
 
@@ -1967,12 +1976,17 @@ def describe(brief: bool = False) -> dict:
                     "propose_transform stores transforms/<name>.sql and "
                     "<name>.contract.yaml as one code request (the same review "
                     "as tracebi push): checked first (a new name, SQL that "
-                    "parses in DuckDB, every -- source: a table agents may "
+                    "parses in DuckDB — when it does not, that is the only "
+                    "error returned —, every -- source: a table agents may "
                     "read, a contract with at least one check). read_transform "
                     "returns an existing transform's file and .contract.yaml, "
                     "its form, the tables it writes, what its last run read "
                     "(sources with method and snapshot) and its column "
-                    "lineage: code, never rows. change=true proposes a change "
+                    "lineage: code, never rows. Its change field is the call to "
+                    "make, or, when a -- source: line names a table agents may "
+                    "not read, says so and names each such line (so does "
+                    "describe_project's passport: agents.blocked), because a "
+                    "change cannot read it either. change=true proposes a change "
                     "to an existing SQL transform, diffed against the "
                     "published files on review; it must keep writing every "
                     "table a model reads (else refused, naming the model and "
@@ -1983,7 +1997,10 @@ def describe(brief: bool = False) -> dict:
                     "source: tables loaded as the real run loads them, "
                     "external access locked, -- sink: and COPY not run, "
                     "bounded by the statement timeout): dry_run gives per "
-                    "created table its columns, rows and first 20 rows, per "
+                    "created table its columns, rows, state against the "
+                    "warehouse's table of that name (new, changed or "
+                    "unchanged) and, for a new or changed one only, its first "
+                    "20 rows (sample), per "
                     "check passed and failing_rows, the column lineage, "
                     "elapsed_ms and any error with its statement. Nothing "
                     "real is written. A proposal whose dry run fails is "
@@ -1991,8 +2008,11 @@ def describe(brief: bool = False) -> dict:
                     "An admin approves it in the app (review_url), approving "
                     "runs it once and, in a git workspace, commits exactly "
                     "its files (author the proposer, a TraceBi-Request "
-                    "trailer; never pushed). Then start_draft(kind='models') "
-                    "over the sunk tables. export_table (admin) writes a "
+                    "trailer; never pushed). Then a model over the sunk "
+                    "tables: start_draft(kind='models', path=<new name>), or "
+                    "for a model that reads them, start_draft(kind='models', "
+                    "path=<that model>), which starts from its published copy "
+                    "(the proposal's note names it). export_table (admin) writes a "
                     "warehouse table or view to a connection or an object "
                     "prefix (<prefix>/<table>.parquet) and records an export run.",
         },
@@ -2044,7 +2064,8 @@ def describe(brief: bool = False) -> dict:
                     "request (POST /api/code-requests) that an admin approves in the "
                     "app: the files go in and the pipelines they touch run once on "
                     "the server. Data files are refused.",
-            "mcp": "list_drafts(), start_draft(kind, path, from_published=False), "
+            "mcp": "list_drafts(), start_draft(kind, path, from_published=<a copy when "
+                   "path is published>), "
                    "read_draft(kind, path), write_draft_file(kind, path, file, content), "
                    "preview_draft(kind, path), model_impact(path), "
                    "publish_draft(kind, path, note='', accept_impact=False, folder=''), "
@@ -2055,8 +2076,13 @@ def describe(brief: bool = False) -> dict:
                     "GET /api/publish-requests, POST /api/publish-requests/{id}/approve|reject",
             "what": "Remote drafts: a report or model written before it goes live. "
                     "Drafts live under drafts/<owner>/ (TRACEBI_DRAFTS_DIR, default "
-                    "drafts/). A report draft holds only report.json, template.html, "
-                    "style.css and script.js. A model draft is one models/<name>.yaml or "
+                    "drafts/). start_draft of a path that is published starts from "
+                    "the published copy (from_published=false starts empty); a new "
+                    "path starts empty. A report draft holds only report.json, "
+                    "template.html, app.jsx, style.css and script.js: with only the "
+                    "gateway, a report is start_draft(kind='reports') → "
+                    "write_draft_file → preview_draft → publish_draft, then "
+                    "build_report and verify_manifest. A model draft is one models/<name>.yaml or "
                     ".json, one form at a time (see model_json). preview_draft "
                     "renders against the published models plus the owner's draft models, in memory, and returns "
                     "the url where the person sees it. publish_draft validates "
@@ -2167,18 +2193,27 @@ def describe(brief: bool = False) -> dict:
         },
         "analyst_knowledge": _analyst_knowledge(),
     }
+    if topic:
+        if topic not in full or topic == "tracebi_version":
+            raise ValueError(f"unknown topic {topic!r}; the topics are "
+                             f"{', '.join(k for k in full if k != 'tracebi_version')}")
+        return {"tracebi_version": full["tracebi_version"], "topic": topic,
+                topic: full[topic]}
     if not brief:
         return full
-    # The token-lean tier: everything the package-first loop needs, with a
-    # pointer at what was omitted so more can be fetched deliberately.
-    omitted = ("cheat_sheets", "report_sections", "dataset_verbs")
-    out = {k: v for k, v in full.items() if k not in omitted}
+    # The token-lean tier: what discovering, querying and drafting need,
+    # with each omitted section named as a topic to fetch when the work
+    # reaches it (the page grammar, before writing a page).
+    out = {k: v for k, v in full.items() if k not in BRIEF_OMITS}
     out["brief"] = {
-        "omitted": list(omitted),
-        "note": "Legacy section classes, DataSet verbs, and Python cheat "
-                "sheets — needed only when writing Python against the "
-                "library directly. Fetch the full vocabulary (no --brief / "
-                "brief=false) when you do.",
+        "omitted": list(BRIEF_OMITS),
+        "fetch": "get_context(topic=<name>) over the gateway, tracebi context "
+                 "--topic <name> on a shell: one section of the full vocabulary",
+        "note": "presentation is the page grammar (data-tb-* figures, the kit, "
+                "report.json, layouts): fetch it before you write a page. "
+                "schedule, connect, templates, spreadsheet and pdf when the task "
+                "is one of those. cheat_sheets, report_sections and "
+                "dataset_verbs only for Python against the library.",
     }
     return out
 

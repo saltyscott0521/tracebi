@@ -640,7 +640,7 @@ call <code>run</code> from it:</p>
 read-only code appendix, and no manifest. <code>verify --file</code> refuses it by name.</p>
 <h2 id="agents">Agents</h2>
 <h3 id="tracebi-context"><code>tracebi context</code></h3>
-<pre><code class="language-bash">tracebi context [--model NAME] [--brief] [--compact]
+<pre><code class="language-bash">tracebi context [--model NAME] [--brief] [--topic NAME] [--compact]
 </code></pre>
 <p>TraceBi's vocabulary as JSON, generated from the code. An agent reads it first.</p>
 <table>
@@ -653,7 +653,11 @@ read-only code appendix, and no manifest. <code>verify --file</code> refuses it 
 <tbody>
 <tr>
 <td><code>--brief</code></td>
-<td>The smaller version: semantic model, figure grammar, contracts, conventions.</td>
+<td>The smaller version (at most 45% of the full payload): semantic model, contracts, conventions, drafts. <code>brief.omitted</code> names what it leaves out.</td>
+</tr>
+<tr>
+<td><code>--topic NAME</code></td>
+<td>One section of the vocabulary alone, such as <code>presentation</code> (the page grammar: <code>data-tb-*</code> figures, the kit, <code>report.json</code>). Read it before you write a page.</td>
 </tr>
 <tr>
 <td><code>--model NAME</code></td>

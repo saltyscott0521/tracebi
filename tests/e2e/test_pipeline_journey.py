@@ -507,6 +507,10 @@ def test_a_sink_view_reads_only_the_warehouse_and_a_model_reads_it(reference, mo
     from tracebi.project_config import warehouse
 
     monkeypatch.delenv("TRACEBI_CRM_URL", raising=False)
+    # The CRM's table off the allowlist it ships with: a view over a source
+    # table no allowlist admits is refused.
+    crm = reference / "connections" / "crm.yaml"
+    crm.write_text(crm.read_text().split("agents:")[0])
     sql = reference / "transforms" / "holdings_transform.sql"
     text = sql.read_text()
     refused = {

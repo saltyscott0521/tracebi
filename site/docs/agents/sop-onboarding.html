@@ -127,8 +127,11 @@ sink what you need, or need only a change:</p>
 satisfied its contract, and the <code>sources</code> that run read, each with <code>method</code>
 and <code>snapshot</code> when a committed snapshot stood in) and <code>lineage</code>, per table
 and column the columns DuckDB's parse proves it is computed from. It reads
-code, never rows. A transform node's <code>passport.agents.tools</code> in the graph
-names the tools that take its name.</p>
+code, never rows. Its <code>change</code> is the call that proposes a change, or, when
+a <code>-- source:</code> line names a table you may not read, says so and names each
+such line: a change would have to read it too, so ask the person to tick it
+first. A transform node's <code>passport.agents.tools</code> in the graph names the
+tools that take its name, and <code>passport.agents.blocked</code> the same lines.</p>
 <p>Then the connections themselves:</p>
 <pre><code class="language-json">{ &quot;tool&quot;: &quot;list_connections&quot;, &quot;arguments&quot;: {} }
 </code></pre>
@@ -184,7 +187,9 @@ checks:
 </code></pre>
 <p>The proposal is checked before it is stored: the name is new, the SQL parses
 in DuckDB, every <code>-- source:</code> is a table you may read, and the contract is
-valid. A refusal lists every reason; fix them and propose again. On success
+valid. SQL that does not parse is refused with that one error, since nothing
+else read from it would be true; any other refusal lists every reason. Fix
+them and propose again. On success
 you get a <code>request_id</code>, a <code>review_url</code> and a <code>dry_run</code>.</p>
 <p><strong>To change a transform that exists</strong>, read it (<code>read_transform</code>), edit its
 SQL and contract, and propose them under its name with <code>change: true</code>. The
@@ -201,8 +206,10 @@ tables loaded the way the real run loads them, and external access locked,
 so it reads only what you may read and writes nothing real. A <code>-- sink:</code>
 line is not sent and a <code>COPY</code> is not run; <code>not_executed</code> names each. The run
 is bounded by the workspace's statement timeout.</p>
-<p><code>dry_run</code> holds, per table the SQL created, its <code>columns</code>, <code>rows</code> and the
-first 20 rows (<code>sample</code>); per check, <code>passed</code> and <code>failing_rows</code>; the
+<p><code>dry_run</code> holds, per table the SQL created, its <code>columns</code>, <code>rows</code>, its
+<code>state</code> against the warehouse's table of that name (<code>new</code>, <code>changed</code>, or
+<code>unchanged</code>: the same columns and rows) and, for a new or changed one only,
+the first 20 rows (<code>sample</code>); per check, <code>passed</code> and <code>failing_rows</code>; the
 <code>lineage</code> DuckDB's parse proves; <code>elapsed_ms</code>; and any <code>error</code>, with the
 <code>statement</code> and <code>line</code> it failed on. <code>summary</code> says it in one line ("Dry run:
 2 tables, checks 3 of 3 passed").</p>
@@ -225,7 +232,10 @@ request says so and the admin tells you; propose a corrected transform.</p>
 <p>Once the tables exist, <code>describe_table</code> gives their columns. Draft a
 declarative model over them:</p>
 <ol>
-<li><code>start_draft(kind="models", path="shop_model")</code>.</li>
+<li><code>start_draft(kind="models", path="shop_model")</code>. For a model that is
+   already published (a change that added a column a measure now reads), the
+   draft starts from the published copy: add to it, then run
+   <code>model_impact(path)</code> before you publish and show the person what moves.</li>
 <li><code>write_draft_file(kind="models", path="shop_model", file="shop_model.yaml",
    content=…)</code>: a <code>type: warehouse</code> connector, the tables, the relationships,
    the facts, the dimensions and the named measures (<a href="../reference/model-json.html">Model files (YAML or JSON)</a>).</li>

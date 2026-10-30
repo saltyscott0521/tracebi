@@ -36,7 +36,7 @@ def _guides() -> dict[str, str]:
 
 def _vocabulary_attributes() -> set[str]:
     """Every data-tb-* attribute the generated vocabulary documents."""
-    pres = describe(brief=True)["presentation"]
+    pres = describe(topic="presentation")["presentation"]
     text = str(pres)
     return set(re.findall(r"data-tb-[a-z-]+", text))
 
@@ -211,7 +211,7 @@ class TestTheDesignSystemIsTaught:
               "deltaBinding")
 
     def test_the_vocabulary_and_both_guides_name_the_system(self):
-        payload = json.dumps(describe(brief=True)["presentation"])
+        payload = json.dumps(describe(topic="presentation")["presentation"])
         for name in self._FRAME:
             assert name in payload, f"the vocabulary does not name {name}"
         for guide, text in _guides().items():
@@ -310,7 +310,7 @@ class TestLargeDetailArtifactIsTaught:
             )
 
     def test_the_embed_keys_are_in_the_vocabulary_and_both_guides(self):
-        note = " ".join(describe(brief=True)["presentation"]["report_json"]["embed"].values())
+        note = " ".join(describe(topic="presentation")["presentation"]["report_json"]["embed"].values())
         for name, text in {"tracebi context": note, **_guides()}.items():
             for phrase in ('"embed"', "embed_budget_mb", "tracebi-slice-",
                            "tracebi-calc-plans"):
@@ -343,11 +343,11 @@ def test_a_value_figure_is_taught_as_a_one_row_binding():
     and a text cell (the top sector's name) is shown as text."""
     from tracebi.mcp_server import authoring_guide
 
-    cell = describe(brief=True)["presentation"]["figure_attributes"]["data-tb-cell"]
+    cell = describe(topic="presentation")["presentation"]["figure_attributes"]["data-tb-cell"]
     assert "one-row" in cell
     assert "row 0" not in cell
     assert "top sector" in cell
-    kinds = describe(brief=True)["presentation"]["figure_helper"]["kinds"]
+    kinds = describe(topic="presentation")["presentation"]["figure_helper"]["kinds"]
     assert "one-row binding" in kinds
     for name, text in _guides().items():
         assert "one-row binding" in text, name
@@ -363,7 +363,7 @@ def test_echarts_is_taught_as_automatic_when_the_page_has_a_chart():
     ``"echarts"`` is no longer a choice and D3 only for ``tracebi.draw``."""
     from tracebi.mcp_server import authoring_guide
 
-    note = describe(brief=True)["presentation"]["report_json"]["libs"]
+    note = describe(topic="presentation")["presentation"]["report_json"]["libs"]
     assert "optional" in note and "automatically" in note
     assert "Every chart is drawn by Apache ECharts" in authoring_guide()
     for name, text in _guides().items():

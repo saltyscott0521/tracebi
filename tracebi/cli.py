@@ -810,6 +810,14 @@ def cmd_context(args: argparse.Namespace) -> int:
     """
     from tracebi.capabilities import describe, describe_model
 
+    if getattr(args, "topic", None):
+        try:
+            payload = describe(topic=args.topic)
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        print(json.dumps(payload, indent=None if args.compact else 2, default=str))
+        return 0
     payload = describe(brief=getattr(args, "brief", False))
     from tracebi.reports.stack import project_house_style
     payload["house_style"] = project_house_style()
@@ -3914,10 +3922,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_context.add_argument("--model", help="Also include this model's schema.")
     p_context.add_argument(
         "--brief", action="store_true",
-        help="The token-lean tier (~40%% of the payload): semantic model, "
-             "figure grammar, contracts, conventions — everything the "
-             "package-first loop needs. Omits the legacy section classes, "
-             "DataSet verbs, and Python cheat sheets.",
+        help="The token-lean tier (at most 45%% of the payload): semantic "
+             "model, contracts, conventions, drafts. Omits the sections its "
+             "brief.omitted names; fetch one with --topic.",
+    )
+    p_context.add_argument(
+        "--topic",
+        help="Print one section of the vocabulary alone, e.g. presentation "
+             "(the page grammar: data-tb-* figures, the kit, report.json).",
     )
     p_context.add_argument("--compact", action="store_true",
                            help="Single-line JSON.")

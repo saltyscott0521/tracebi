@@ -405,7 +405,11 @@ def _warehouse_names(con) -> set:
 
 
 def _created(con) -> list[dict]:
-    """Each table and view the run created: columns, rows, the first rows."""
+    """Each table and view the run created: columns, rows, and ``state``
+    against the warehouse table of that name: ``new`` (none there),
+    ``changed`` (other columns or other rows) or ``unchanged`` (the same
+    columns and the same rows, as multisets). The first rows only for a new
+    or changed one: an unchanged table is what the warehouse already holds."""
     from tracebi.workbench import _json_safe
 
     rows = con.execute(
@@ -413,17 +417,39 @@ def _created(con) -> list[dict]:
         "AND schema_name = 'main' AND NOT temporary "
         "UNION ALL SELECT view_name, 'view' FROM duckdb_views() WHERE database_name = current_database() "
         "AND schema_name = 'main' AND NOT internal AND NOT temporary ORDER BY 1").fetchall()
+    there = _warehouse_names(con) if _WAREHOUSE in _databases(con) else set()
     out = []
     for name, kind in rows:
         rel = f"main.{_ident(name)}"
         columns = [{"name": r[0], "type": r[1]} for r in con.execute(f"DESCRIBE {rel}").fetchall()]
         count = int(con.execute(f"SELECT count(*) FROM {rel}").fetchone()[0])
-        result = con.execute(f"SELECT * FROM {rel} LIMIT {SAMPLE_ROWS}")
-        names = [d[0] for d in result.description]
-        sample = [{c: _json_safe(v) for c, v in zip(names, row)} for row in result.fetchall()]
-        out.append({"name": name, "kind": kind, "columns": columns, "rows": count,
-                    "sample": sample})
+        state = "new" if name.lower() not in there else _state(con, rel, name, columns)
+        entry = {"name": name, "kind": kind, "state": state, "columns": columns, "rows": count}
+        if state != "unchanged":
+            result = con.execute(f"SELECT * FROM {rel} LIMIT {SAMPLE_ROWS}")
+            names = [d[0] for d in result.description]
+            entry["sample"] = [{c: _json_safe(v) for c, v in zip(names, row)}
+                               for row in result.fetchall()]
+        out.append(entry)
     return out
+
+
+def _state(con, rel: str, name: str, columns: list[dict]) -> str:
+    """``changed`` or ``unchanged``: the created table *rel* against the
+    warehouse's table *name*, by columns, then rows both ways (EXCEPT ALL)."""
+    import duckdb
+
+    theirs = f"{_WAREHOUSE}.main.{_ident(name)}"
+    try:
+        before = [{"name": r[0], "type": r[1]} for r in con.execute(f"DESCRIBE {theirs}").fetchall()]
+        if before != columns:
+            return "changed"
+        differ = con.execute(
+            f"SELECT EXISTS (SELECT * FROM {rel} EXCEPT ALL SELECT * FROM {theirs}) "
+            f"OR EXISTS (SELECT * FROM {theirs} EXCEPT ALL SELECT * FROM {rel})").fetchone()[0]
+    except duckdb.Error:
+        return "changed"     # a table the comparison cannot read is never called the same
+    return "changed" if differ else "unchanged"
 
 
 #: Per check, the observed count that is the number of failing rows (or keys).

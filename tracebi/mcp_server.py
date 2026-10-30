@@ -554,6 +554,8 @@ class ContextResult(TypedDict, total=False):
     analyst_knowledge: Any
     brief: Any  # the omission note; null or absent when brief=false
     house_style: Any  # reports/_style.md {file, text}; null when the workspace has none
+    topic: Any  # the section's name, when topic= was passed (that section alone)
+    errors: Optional[list[str]]
 
 
 class ModelsResult(TypedDict, total=False):
@@ -698,22 +700,27 @@ class VerifyResult(TypedDict, total=False):
 
 
 def gateway_context(model: Optional[str] = None,
-                    brief: bool = False) -> ContextResult:
+                    brief: bool = False, topic: str = "") -> ContextResult:
     """
     The semantic contract: TraceBi's vocabulary, optionally plus one
     model's schema. This is the first call an agent should make — every
     fact, dimension, measure and section it may reference is in here, and
     nothing outside it will validate.
 
-    ``brief=True`` is the token-lean tier (~40% of the payload): the
-    semantic model, the figure grammar, contracts, and conventions —
-    everything the package-first loop needs. Start brief; fetch the full
-    vocabulary only when writing Python against the library directly.
+    ``brief=True`` is the token-lean tier (at most 45% of the payload): the
+    semantic model, contracts, conventions and drafts. It names what it
+    leaves out as topics; ``topic=<name>`` returns that one section
+    (``presentation``, the page grammar, before writing a page).
     """
     from tracebi.capabilities import describe
 
     from tracebi.reports.stack import project_house_style
 
+    if topic:
+        try:
+            return describe(topic=topic)
+        except ValueError as exc:
+            return {"errors": [str(exc)]}
     payload = describe(brief=brief)
     payload["house_style"] = project_house_style()
     if model:
@@ -1573,7 +1580,7 @@ def gateway_list_drafts() -> DraftResult:
 
 
 def gateway_start_draft(kind: str, path: str,
-                        from_published: bool = False, theme: str = "") -> DraftResult:
+                        from_published: Optional[bool] = None, theme: str = "") -> DraftResult:
     from tracebi import drafts
     owner = _draft_owner()
     return _draft_call(lambda: {
@@ -1677,7 +1684,16 @@ def gateway_describe_project() -> ProjectResult:
 
         rescan_library(str(_models_dir()), os.environ.get("TRACEBI_PIPELINES_DIR", "pipelines"),
                        str(connections_dir()))
-    return project_graph(registry)
+    graph = project_graph(registry)
+    # What only the app's map draws (its lane, chip, subtitle, page) is left
+    # out; every fact the map shows is in the rest.
+    graph["nodes"] = [{k: v for k, v in n.items() if k not in _MAP_ONLY}
+                      for n in graph["nodes"]]
+    return graph
+
+
+#: Node fields only the app's map uses; ``describe_project`` leaves them out.
+_MAP_ONLY = frozenset({"lane", "chip", "sub", "open"})
 
 
 class SourcesResult(TypedDict, total=False):
@@ -1872,6 +1888,8 @@ def gateway_read_transform(name: str) -> TransformResult:
         return missing
     form = transforms.transform_form(path)
     beside = transforms.contract_file(path)
+    text = path.read_text(encoding="utf-8")
+    blocked = transforms.sources_agents_may_not_read(text) if form == "sql" else []
     rec = _certificate_record(name) or {}
     lineage = rec.get("lineage")
     tables = (sorted(lineage) if lineage else
@@ -1888,11 +1906,15 @@ def gateway_read_transform(name: str) -> TransformResult:
                     } for ref, src in (rec.get("sources") or {}).items()]}
     return {
         "ok": True, "name": name, "form": form, "file": f"transforms/{path.name}",
-        "text": path.read_text(encoding="utf-8"),
+        "text": text,
         "contract_file": f"transforms/{beside.name}" if beside else None,
         "contract_yaml": beside.read_text(encoding="utf-8") if beside else None,
         "tables": tables, "last_run": last_run, "lineage": lineage,
         "change": (f"propose_transform(name={name!r}, sql, contract_yaml, note, change=true)"
+                   if form == "sql" and not blocked else
+                   f"not proposable while it reads a table agents may not read "
+                   f"({'; '.join(blocked)}): a person ticks it on the Sources page "
+                   f"(agents: in connections/<name>.yaml) first"
                    if form == "sql" else
                    f"a {form} transform is changed by a person from a laptop with tracebi "
                    f"push; an agent proposes SQL only"),
@@ -1953,15 +1975,17 @@ def _change_errors(name: str, sql: str) -> list[str]:
     dropped = today - transforms.sink_names(sql)
     return [f"transforms/{name}.sql: the change no longer writes {table}, which model "
             f"{model} reads. Keep writing it, or change the model first as a draft "
-            f"(start_draft(kind='models', path={model!r})) and propose this once it is published"
+            f"(start_draft(kind='models', path={model!r}, from_published=true)) and propose "
+            f"this once it is published"
             for model, table in _models_reading(dropped)]
 
 
 def _proposal_errors(name: str, sql: str, contract_yaml: str,
                      change: bool = False) -> list[str]:
     """Why a proposed transform cannot be stored, checked before anything is:
+    the SQL parses in DuckDB (when it does not, that error is the only one),
     the name is a new stem (or, for a change, an existing SQL transform whose
-    change keeps every table a model reads), the SQL parses in DuckDB, every
+    change keeps every table a model reads), every
     ``-- source:`` is a table agents may read, and the contract file declares
     checks in the closed vocabulary."""
     import tempfile
@@ -1974,10 +1998,27 @@ def _proposal_errors(name: str, sql: str, contract_yaml: str,
     if not isinstance(name, str) or not code_requests.is_code_path(f"transforms/{name}.sql"):
         return [f"name: {name!r} is not a transform name (letters, digits, _ and -; "
                 f"no suffix)"]
-    errors = []
     where = f"transforms/{name}.sql"
+    # The SQL itself first: text that does not parse is the one thing to fix,
+    # and nothing read from it (what it no longer writes) would be true.
+    errors = []
+    try:
+        directives = transforms.source_directives(sql, where)
+        text = transforms.render_sql(sql, os.getcwd(), where)
+    except transforms.TransformError as exc:
+        return [str(exc)]
+    con = duckdb.connect(":memory:")
+    try:
+        parsed = json.loads(con.execute("SELECT json_serialize_sql(?)", [text]).fetchone()[0])
+        statements = duckdb.extract_statements(text) if parsed.get("error_type") != "parser" else None
+    finally:
+        con.close()
+    if statements is None:
+        return [f"{where}: does not parse: {parsed.get('error_message')}"]
+    if not statements:
+        return [f"{where}: holds no statement; end by creating the tables it sinks"]
     if change:
-        errors += _change_errors(name, sql if isinstance(sql, str) else "")
+        errors += _change_errors(name, sql)
         if errors and errors[0].startswith("name:"):
             return errors
     else:
@@ -1989,23 +2030,6 @@ def _proposal_errors(name: str, sql: str, contract_yaml: str,
             errors.append(f"name: transforms/{name} already exists; propose a new name, or "
                           f"pass change=true to propose a change to it (read_transform "
                           f"shows it)")
-    try:
-        directives = transforms.source_directives(sql, where)
-        text = transforms.render_sql(sql, os.getcwd(), where)
-    except transforms.TransformError as exc:
-        errors.append(str(exc))
-        directives, text = [], None
-    if text is not None:
-        con = duckdb.connect(":memory:")
-        try:
-            parsed = json.loads(con.execute("SELECT json_serialize_sql(?)", [text]).fetchone()[0])
-            statements = duckdb.extract_statements(text) if parsed.get("error_type") != "parser" else None
-        finally:
-            con.close()
-        if statements is None:
-            errors.append(f"{where}: does not parse: {parsed.get('error_message')}")
-        elif not statements:
-            errors.append(f"{where}: holds no statement; end by creating the tables it sinks")
     for src in directives:
         if not _agent_may_read(src["connection"], src["table"]):
             errors.append(f"-- source: {src['ref']}: there is no table {src['ref']} among "
@@ -2052,11 +2076,15 @@ def gateway_propose_transform(name: str, sql: str, contract_yaml: str,
     _show_action("propose_transform", f"Proposed {what} {name} (waiting for an admin). "
                                       f"{result['summary']}")
     if result["ok"]:
+        from tracebi.transforms import sink_names
+        readers = sorted({m for m, _ in _models_reading(sink_names(sql))})
+        draft = (" or ".join(f"start_draft(kind='models', path={m!r}, from_published=true)"
+                             for m in readers) if readers else "start_draft(kind='models', path=<a new model name>)")
         said = ("Its dry run passed against a throwaway copy; nothing real was written. An "
                 "admin reviews the diff and the dry run in the app and, on approval, the "
                 "files go into transforms/ and the transform runs once. Tell the person it "
                 "waits for that; then draft the model over the tables it sinks "
-                "(start_draft(kind='models')).")
+                f"({draft}).")
     else:
         said = ("Stored, but its dry run did not pass, so it cannot be approved. Read "
                 "dry_run.error and dry_run.checks, fix the SQL or the contract, and propose "
@@ -2241,13 +2269,13 @@ def build_server(token: Optional[str] = None, oauth=None):
             "type, DataSet verb, measure kind and filter operator. Pass "
             "model=<name> to include that model's tables, dimensions and "
             "named measures; model is null or absent unless you pass it. "
-            "Call this first — start with brief=true, the tier for "
-            "authoring a package. brief=true includes presentation (the "
-            "data-tb-* figure grammar) and number_formats. It leaves "
-            "cheat_sheets, report_sections, and dataset_verbs null or "
-            "absent — not requested in this tier; call "
-            "get_context(brief=false) for them. On brief=false the brief "
-            "field itself is null or absent. house_style is the workspace's "
+            "Call this first — start with brief=true, the lean tier for "
+            "discovering, querying and drafting. brief=true leaves out the "
+            "sections its brief.omitted names (null or absent here); fetch "
+            "one with get_context(topic=<name>), which returns that section "
+            "alone — topic='presentation' (the data-tb-* figure grammar, the "
+            "kit, report.json) before you write a page. brief=false returns "
+            "everything, and its brief field is null or absent. house_style is the workspace's "
             "reports/_style.md (null when there is none): the team's design "
             "rules — follow them over the defaults when you build a page."
         ),
@@ -2454,8 +2482,9 @@ def build_server(token: Optional[str] = None, oauth=None):
             "template.html, style.css, script.js) or 'models' (one declarative "
             "<name>.yaml, or <name>.json; a new model draft starts as "
             "YAML). path is a report path like finance/weekly, or a "
-            "model name [a-z0-9_]+. from_published=true copies the published "
-            "one; a published report with a report.py cannot be "
+            "model name [a-z0-9_]+. A path that is published starts as a "
+            "copy of the published one (from_published defaults to that; "
+            "false starts empty); a published report with a report.py cannot be "
             "drafted remotely. theme (a new report only): ledger, nightdesk or "
             "signal, the house theme; its report.json starts as {\"theme\": …}, "
             "so keep that key when you write report.json. Returns the draft's "
@@ -2472,7 +2501,7 @@ def build_server(token: Optional[str] = None, oauth=None):
         annotations=_DRAFT_WRITE, structured_output=True,
         description=(
             "Replace one file of an existing draft with content (UTF-8 text, "
-            "at most 512 KB). file is report.json, template.html, "
+            "at most 512 KB). file is report.json, template.html, app.jsx, "
             "style.css or script.js for a report (script.js runs only in the "
             "reader's sandboxed browser frame, never on the server); <name>.yaml or <name>.json for a model "
             "(one form at a time: writing the other replaces the draft's "
@@ -2735,9 +2764,9 @@ def build_server(token: Optional[str] = None, oauth=None):
     # templates.
     @server.prompt(
         name="author_report", title="Author a governed report",
-        description=("Walk the full loop — context, query, package, build, verify — for a "
-                     "question; with no model yet, first explore the allowed sources and "
-                     "propose a transform."),
+        description=("Walk the full loop — context, query, package (files, or drafts over "
+                     "the gateway), build, verify — for a question; with no model yet, "
+                     "first explore the allowed sources and propose a transform."),
     )
     def _author_report_prompt(question: str) -> str:
         from tracebi.reports.house import OFFER
@@ -2804,33 +2833,51 @@ def build_server(token: Optional[str] = None, oauth=None):
             "its review_url; an admin approves it and it runs once. Its "
             "tables do not exist until then, so do not go on without it.\n"
             "d. start_draft(kind='models', path=<name>): a declarative model "
-            "over the sunk tables (describe_table gives their columns), "
-            "preview_draft, then publish_draft once the person agrees.\n\n"
+            "over the sunk tables (describe_table gives their columns); a "
+            "model that is published starts from its published copy. "
+            "write_draft_file the model file, preview_draft, model_impact(path) "
+            "for a model that exists (show the person what moves), then "
+            "publish_draft(kind='models', path, note) once the person agrees "
+            "(accept_impact=true only after they have seen the impact). "
+            "Publish the model before a report that uses it.\n\n"
             "Follow the loop, and do not skip a step:\n"
             "1. Call get_context (start with brief=true; add the model= you'll "
-            "use) to learn the exact facts, dimensions, named measures and "
-            "the data-tb-* figure grammar. Nothing outside that vocabulary "
-            "will validate.\n"
+            "use) to learn the exact facts, dimensions and named measures, "
+            "then get_context(topic='presentation') for the data-tb-* figure "
+            "grammar before you write a page. Nothing outside that vocabulary "
+            "will validate. A measure the question needs and the model lacks "
+            "is a model draft (step d), published first.\n"
             "2. Use query_model to explore the numbers. Every result is "
             "stamped — keep the fingerprints for anything you cite — and "
             "carries a binding object.\n"
-            "3. Write the package reports/<name>/: paste each binding "
+            "3. Write the package: paste each binding "
             "object as the value of data.<name> in report.json, and in "
             "template.html give every "
             "number an element with data-tb-figure + data-tb-binding (or "
             "mark it data-tb-unverified) — in an app.jsx, show it through "
             "the tracebi kit (<Kpi>, <Value>, <Chart>, <Table>) with literal "
-            "binding/cell. Never type a number a query produced.\n"
-            "4. build_report(report=<the package name>) to publish the "
+            "binding/cell. Never type a number a query produced. Two routes "
+            "to the same package:\n"
+            "   - with the workspace's files (a laptop, tracebi dev): write "
+            "reports/<project>/<name>/ yourself;\n"
+            "   - with only the gateway: start_draft(kind='reports', "
+            "path='<project>/<name>') (a published path starts from its "
+            "published copy), write_draft_file(kind='reports', path, "
+            "'report.json', ...) and write_draft_file(..., 'template.html' "
+            "or 'app.jsx', ...), preview_draft(kind='reports', path) until "
+            "ok:true and give the person its url, then "
+            "publish_draft(kind='reports', path, note) once they agree.\n"
+            "4. build_report(report=<the package's path>) to publish the "
             "self-contained HTML and its manifest. It returns output_path "
             "and manifest_path. It refuses a figure whose claim does not "
-            "match its binding — fix the claim and build again.\n"
+            "match its binding — fix the claim (in the draft, on the "
+            "gateway route: write, preview, publish again) and build again.\n"
             "5. verify_manifest(manifest=<the manifest_path from step 4>) "
             "and report the verdict. Only 'reproduces' means the numbers "
             "were re-run and matched; say so honestly if anything is "
             "unverifiable. To read the page, fetch_artifact(path=<the "
             "output_path from step 4>).\n\n"
-            "Without file access, author a JSON ReportSpec instead (read "
+            "For a fixed layout, a JSON ReportSpec is the simpler lane (read "
             "tracebi://spec-schema), validate_report_spec until ok:true — "
             "heed its warnings too — then render_report_spec, which returns "
             "html_path and manifest_path. Pass that manifest_path as "

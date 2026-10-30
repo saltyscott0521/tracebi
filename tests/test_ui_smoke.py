@@ -331,10 +331,13 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(board.locator('[data-node="report:saas_model/mrr_dashboard"]')).to_have_class(lit)
             expect(board.locator('[data-node="report:portfolio_model/portfolio_book"]')).to_have_class(
                 re.compile(r"\bis-dim\b"))
-            # What agents see: no CRM table is on the allowlist, so the CRM goes dark.
+            # What agents see: the CRM's one table is on its allowlist, so the
+            # CRM stays lit; a transform is never read, only proposed, so it goes dark.
             lenses.get_by_role("button", name="What agents see").click()
             page.wait_for_url("**/data/lineage?lens=access")
-            expect(board.locator('[data-node="source:crm"]')).to_have_class(re.compile(r"\bis-dark\b"))
+            expect(board.locator('[data-node="source:crm"]')).not_to_have_class(re.compile(r"\bis-dark\b"))
+            expect(board.locator('[data-node="transform:holdings_transform"]')).to_have_class(
+                re.compile(r"\bis-dark\b"))
             # A group's passport: the same rows as every piece, and Zoom to
             # schema lands on the warehouse's schema with that group selected.
             board.locator('[data-node="group:holdings_transform"] .mcard__main').click()
@@ -1262,14 +1265,11 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             assert (project / "models" / "portfolio_model.yaml").read_text(encoding="utf-8") == moved
             fail_on_browser_errors()
 
-            # An agent proposes a change to a SQL transform (the person let
-            # agents read the billing database): each proposal was dry-run
-            # against a throwaway copy, and Review shows the diff with the
-            # dry run, its tables as grids. One whose checks fail leads with
-            # the failure and cannot be approved.
-            billing = project / "connections" / "billing.yaml"
-            billing.write_text(billing.read_text(encoding="utf-8") + 'agents:\n  tables: "*"\n',
-                               encoding="utf-8")
+            # An agent proposes a change to a SQL transform (the reference
+            # workspace lets agents read the billing tables it reads): each
+            # proposal was dry-run against a throwaway copy, and Review shows
+            # the diff with the dry run, its tables as grids. One whose checks
+            # fail leads with the failure and cannot be approved.
             proposed = subprocess.run([sys.executable, "-c", (
                 "import json\n"
                 "from tracebi import mcp_server as gw\n"
@@ -1292,6 +1292,9 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             dry = good.get_by_role("region", name="Dry run")
             expect(dry.get_by_text("Dry run: 4 tables, checks", exact=False)).to_be_visible()
             expect(dry.locator("th", has_text="plan_code")).to_be_visible()
+            # The tables the change leaves as they were say so, with no grid.
+            expect(dry.get_by_text("Changed ·", exact=False).first).to_be_visible()
+            expect(dry.get_by_text("Unchanged, as the warehouse holds it", exact=False).first).to_be_visible()
             expect(good.get_by_text("+SELECT row_number() OVER (ORDER BY plan) - 1 AS plan_id, plan, upper(plan) AS plan_code")).to_be_visible()
             expect(good.get_by_role("button", name="Approve and run")).to_be_enabled()
             good.screenshot(path=str(tmp_path / "review-dry-run-passed.png"))

@@ -449,14 +449,15 @@ read-only code appendix, and no manifest. `verify --file` refuses it by name.
 ### `tracebi context`
 
 ```bash
-tracebi context [--model NAME] [--brief] [--compact]
+tracebi context [--model NAME] [--brief] [--topic NAME] [--compact]
 ```
 
 TraceBi's vocabulary as JSON, generated from the code. An agent reads it first.
 
 | Flag | Effect |
 |---|---|
-| `--brief` | The smaller version: semantic model, figure grammar, contracts, conventions. |
+| `--brief` | The smaller version (at most 45% of the full payload): semantic model, contracts, conventions, drafts. `brief.omitted` names what it leaves out. |
+| `--topic NAME` | One section of the vocabulary alone, such as `presentation` (the page grammar: `data-tb-*` figures, the kit, `report.json`). Read it before you write a page. |
 | `--model NAME` | Also include that model's schema. |
 
 ### `tracebi knowledge`
