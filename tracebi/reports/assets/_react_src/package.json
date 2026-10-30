@@ -1,7 +1,7 @@
 {
   "name": "tracebi-react-kit",
   "private": true,
-  "description": "Sources for the vendored React lane bundles (react.min.js, recharts.min.js, echarts-kit.min.js, tailwind.min.js, lucide-icons.json). See REACT_NOTICE.md.",
+  "description": "Sources for the vendored React lane bundles (react.min.js, sucrase.min.js, tailwind-compiler.min.js, recharts.min.js, echarts-kit.min.js, tailwind.min.js, lucide-icons.json). See REACT_NOTICE.md.",
   "type": "module",
   "scripts": {
     "build": "node build.mjs"
@@ -15,6 +15,7 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "recharts": "2.15.4",
-    "sucrase": "3.35.0"
+    "sucrase": "3.35.0",
+    "tailwindcss": "4.1.11"
   }
 }

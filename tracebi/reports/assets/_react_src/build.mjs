@@ -21,8 +21,24 @@ await build({
   entryPoints: ["runtime.js"], bundle: true, minify: true, format: "iife", define,
   jsx: "transform", jsxFactory: "React.createElement", jsxFragment: "React.Fragment",
   alias: redact,
-  banner: { js: `/*! TraceBi-credit: TanStack Redact ${pkg("@tanstack/redact")} (MIT), Sucrase ${pkg("sucrase")} (MIT) */` },
+  banner: { js: `/*! TraceBi-credit: TanStack Redact ${pkg("@tanstack/redact")} (MIT) */` },
   outfile: out("react.min.js"),
+});
+
+// The app.jsx compiler: run at build in an embedded V8, and inlined into a
+// page only where the build could not compile its app.
+await build({
+  entryPoints: ["sucrase-entry.js"], bundle: true, minify: true, format: "iife", define,
+  banner: { js: `/*! TraceBi-credit: Sucrase ${pkg("sucrase")} (MIT) */` },
+  outfile: out("sucrase.min.js"),
+});
+
+// Tailwind's compiler and stylesheets, run at build only (never inlined).
+await build({
+  entryPoints: ["tailwind-entry.js"], bundle: true, minify: true, format: "iife", define,
+  loader: { ".css": "text" },
+  banner: { js: `/*! TraceBi-credit: Tailwind CSS ${pkg("tailwindcss")} (MIT) */` },
+  outfile: out("tailwind-compiler.min.js"),
 });
 
 // Recharts shares the page's one React: every React entry point it (or a
@@ -59,4 +75,5 @@ writeFileSync(out("tailwind.min.js"),
 const nodes = {};
 for (const [name, node] of Object.entries(icons)) nodes[name] = node[2];  // children only
 writeFileSync(out("lucide-icons.json"), JSON.stringify({ version: pkg("lucide"), icons: nodes }));
-console.log("built react.min.js, recharts.min.js, echarts-kit.min.js, tailwind.min.js, lucide-icons.json");
+console.log("built react.min.js, sucrase.min.js, tailwind-compiler.min.js, recharts.min.js, " +
+  "echarts-kit.min.js, tailwind.min.js, lucide-icons.json");
