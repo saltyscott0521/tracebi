@@ -1646,6 +1646,9 @@ def test_the_desks_page_filters_recompute_every_view(built):
         _settle(page)
         overview = page.locator('[data-tb-binding="totals"][data-tb-cell="positions"] .tb-kpi-value').first
         authored = overview.text_content()
+        # The spread reads in the format the model declares on the measure
+        # (decimal), as the showcase's does: no page overrides it.
+        assert re.fullmatch(r"[\d,]+\.\d\d", page.locator("#kpi-spread .tb-kpi-value").text_content())
         page.get_by_role("button", name="Holdings").click()
         page.wait_for_selector("select[data-tb-filter][multiple]")
         page.locator('select[data-tb-column="dim_issuer.sector"]').select_option(sector)
@@ -1678,6 +1681,31 @@ def test_the_desks_page_filters_recompute_every_view(built):
             assert first_mismatch(got, want) is None, (view, first_mismatch(got, want))
             if figure.endswith("-table"):
                 assert page.locator(f"#{figure} tbody tr").count() == len(want), view
+
+        # The multiple filter is a finished control over the same state: a
+        # button naming what is picked opens a panel of checkboxes; Escape
+        # closes it (keeping the selection) and returns to the button; Space
+        # on a box writes the selection the select would.
+        fund = page.locator("button.tb-multi")
+        picked = fund.get_attribute("aria-label")
+        assert picked.startswith("Fund: ") and set(picked[6:].split(", ")) == set(funds)
+        fund.click()
+        panel = page.locator(".tb-multi-panel:not([hidden])")
+        assert panel.locator("input:checked").count() == 2
+        assert panel.evaluate("p => p.contains(document.activeElement)")
+        page.keyboard.press("Escape")
+        assert fund.get_attribute("aria-expanded") == "false"
+        assert page.evaluate("document.activeElement.classList.contains('tb-multi')")
+        assert page.evaluate("(id) => window.tracebi.result(id)", "funds-table")["selection"] == selection
+        fund.click()
+        panel.locator(f'input[value="{funds[0]}"]').press("Space")
+        _settle(page)
+        assert fund.get_attribute("aria-label") == "Fund: " + funds[1]
+        got = page.evaluate("(id) => window.tracebi.result(id)", "funds-table")
+        assert got["selection"]["dim_fund.fund"] == [funds[1]]
+        page.emulate_media(media="print")     # printed, it is the values picked
+        assert fund.evaluate("""b => [...b.children].filter(c => getComputedStyle(c).display
+                                      !== 'none').map(c => c.textContent)""") == [funds[1]]
     finally:
         browser.close()
         pw.stop()
@@ -1709,6 +1737,17 @@ def test_the_reference_project_carries_no_brand_and_two_house_themes(built):
 
         mode, ground, num, radius = look("saas_model/mrr_dashboard")      # Nightdesk
         assert (mode, ground, radius) == ("dark", "#090c11", "6px") and num.startswith('"Geist Mono"')
+        # Nightdesk's numerals are monospaced digits with tight separators:
+        # "$3,535", never "$3 , 535" (the comma and point are Geist's).
+        page = browser.new_page(viewport={"width": 1440, "height": 900})
+        page.goto((built / "output" / "saas_model/mrr_dashboard.html").as_uri())
+        _settle(page)
+        comma, digit = page.evaluate("""() => {
+            const c = document.createElement('canvas').getContext('2d');
+            c.font = getComputedStyle(document.querySelector('.tb-kpi-value')).font;
+            return [c.measureText(',').width, c.measureText('3').width]; }""")
+        assert comma < 0.6 * digit, (comma, digit)
+        page.close()
         for name, frag in (("portfolio_model/portfolio_dashboard", ""),
                            ("portfolio_model/portfolio_desk", "#view=Funds")):   # Ledger
             mode, ground, num, radius = look(name, frag)

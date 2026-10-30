@@ -136,6 +136,13 @@ wins:</p>
 </ol>
 <p>Columns named like <code>year</code>, <code>id</code> or <code>*_key</code> get no format, so 2024 never
 renders as <code>2,024</code>.</p>
+<p>A text column whose every value is a month (<code>2024-01</code>, as a model's month
+grain writes it) reads <strong>Jan 2024</strong> in tables, on chart axes and readouts, and
+in a range's pickers. Only the words change: the value stays the row's own, so
+it sorts, filters, selects and fingerprints as built.</p>
+<p>A pie's or a funnel's legend names each slice's value, the row's own number in
+the chart's format. A share is shown only when the binding returns one (a
+<code>share</code> measure); the page never works one out.</p>
 <p>This applies to table columns and value figures alike. A KPI with no
 <code>data-tb-format</code> reads <code>4,846.10</code>, not <code>4846.1</code>. The server and the browser
 use the same rule, so the number doesn't change when the page finishes

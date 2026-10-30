@@ -193,6 +193,7 @@ measures:
     ratio: [spread_x_par, par_amount]
     description: Par-weighted average spread (bps)
     synonyms: [par-weighted spread, weighted spread, spread]
+    format: decimal
   - name: mark
     ratio: [fair_value, cost_basis]
     description: Fair value / cost

@@ -166,8 +166,7 @@ function Holdings() {
                          "dim_rating.rating": "Rating", "cost_basis": "Cost",
                          "mark": "Mark", "wtd_spread_bps": "Spread, bps" }}
                formats={{ "fair_value": "currency0", "cost_basis": "currency0",
-                          "unrealized": "currency0", "mark": "percent",
-                          "wtd_spread_bps": "comma" }} />
+                          "unrealized": "currency0", "mark": "percent" }} />
       </Panel>
       <div className="tb-grid">
         <Panel span="tb-span-6" title="Size against mark"
@@ -255,7 +254,7 @@ function Credit() {
         <Table binding="by_rating" id="tbl-rating" selectRows sort bars="wtd_spread_bps"
                columns={["dim_rating.rating", "fair_value", "positions", "wtd_spread_bps", "mark"]}
                labels={{ "dim_rating.rating": "Rating", "wtd_spread_bps": "Spread, bps" }}
-               formats={{ "fair_value": "currency0", "wtd_spread_bps": "comma", "mark": "percent" }} />
+               formats={{ "fair_value": "currency0", "mark": "percent" }} />
       </Panel>
     </>
   );
@@ -365,7 +364,7 @@ function Sidebar({ view, setView }) {
           <p className="m-0 text-xs font-semibold uppercase tracking-wider text-muted">Filter the book</p>
           <div className="grid gap-3 [&_label]:flex [&_label]:flex-col [&_label]:items-stretch [&_label]:text-left
                           [&_label]:gap-1 [&_label]:text-xs [&_label]:font-medium [&_label]:text-muted
-                          [&_select]:w-full">
+                          [&_select]:w-full [&_.tb-multi]:w-full [&_.tb-multi]:max-w-none">
             <Filter column="dim_issuer.sector" label="Sector" />
             <Filter column="dim_fund.fund" label="Fund" multiple />
             <Filter column="dim_rating.rating" label="Rating" multiple />
@@ -415,7 +414,7 @@ export default function App() {
                  deltaGood="up" context="vs cost" id="kpi-fv" />
             <Kpi binding="kpis" cell="mark" format="percent" label="Mark"
                  context="fair value per dollar of cost" id="kpi-mark" />
-            <Kpi binding="kpis" cell="wtd_spread_bps" format="decimal" label="Spread, bps"
+            <Kpi binding="kpis" cell="wtd_spread_bps" label="Spread, bps"
                  context="par-weighted" id="kpi-spread" />
             <Kpi binding="kpis" cell="positions" format="comma" label="Positions"
                  context="loans in view" id="kpi-positions" />

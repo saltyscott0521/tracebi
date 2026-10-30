@@ -163,7 +163,7 @@ _LABEL = """(column) => {
     const label = el.closest('label');
     if (label) {
       const text = Array.from(label.childNodes).filter(c => c !== el && !(c.nodeType === 1 &&
-        (c.contains(el) || /^(SELECT|INPUT)$/.test(c.tagName)))).map(c => c.textContent).join('').trim();
+        (c.contains(el) || /^(SELECT|INPUT|BUTTON)$/.test(c.tagName)))).map(c => c.textContent).join('').trim();
       if (text) return text;
     }
   }

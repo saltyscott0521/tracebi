@@ -433,6 +433,8 @@ img, svg { max-width: 100%; }
   text-align: right;
   white-space: nowrap;  /* a number never breaks across lines */
 }
+/* A month cell ("Jan 2024") is one name: it never breaks either. */
+.tb-period { white-space: nowrap; }
 
 /* Totals row: one style, a tfoot row or an authored .tb-total. */
 :is(.tb-table, [data-tb-figure="table"]) :is(tfoot td, tfoot th, .tb-total td, tr.tb-total th),
@@ -583,6 +585,9 @@ tr.tb-window-pad td {
 .tb-legend-item:not(.tb-legend-item--select)[aria-pressed="false"] { opacity: .45; }
 .tb-legend-item:not(.tb-legend-item--select)[aria-pressed="false"] .tb-legend-swatch { background: transparent !important; outline: 1.5px solid var(--tb-muted); outline-offset: -1.5px; }
 .tb-legend-swatch { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+/* A pie's legend names each slice's value, the row's own number. */
+.tb-legend-value { color: var(--tb-muted); font-family: var(--tb-chart-num-font, inherit);
+                   font-variant-numeric: tabular-nums; }
 .tb-legend-swatch--line { height: 3px; width: 14px; border-radius: 2px; }
 .tb-legend-swatch--dot { border-radius: 50%; }
 .tb-chart-tip {
@@ -994,6 +999,67 @@ select[data-tb-filter][multiple] {
   overflow-y: auto;
 }
 select[data-tb-filter][multiple] option { padding: 1px 6px; border-radius: 4px; }
+/* On a live page it is a button naming what is picked, opening a panel of
+ * checkboxes (tracebi.js paintMulti); the select stays, unseen, the state. */
+/* !important only because an app page layers this sheet under its
+   utilities, and a utility's width would otherwise size the hidden select. */
+select[data-tb-filter].tb-multi-native {
+  position: absolute !important; width: 1px !important; height: 1px !important;
+  margin: 0 !important; padding: 0 !important; opacity: 0; pointer-events: none; overflow: hidden;
+}
+.tb-multi {
+  font: inherit; font-size: 13.5px; color: var(--tb-ink); background: var(--tb-bg);
+  border: 1px solid color-mix(in srgb, var(--tb-ink) 16%, var(--tb-rule));
+  border-radius: 8px; height: 32px; padding: 0 28px 0 10px; margin: 0;
+  max-width: 16em; min-width: 0; flex: 0 1 auto; text-align: left; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  box-sizing: border-box; vertical-align: middle;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23666666' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+}
+label:has(> .tb-multi) { max-width: 100%; }
+.tb-multi:hover { border-color: color-mix(in srgb, var(--tb-ink) 30%, var(--tb-rule)); }
+.tb-multi:focus-visible { outline: 2px solid var(--tb-accent); outline-offset: 1px; }
+.tb-multi:not([data-tb-picked="0"]) {
+  border-color: color-mix(in srgb, var(--tb-accent) 55%, var(--tb-rule));
+  background-color: var(--tb-surface-accent, var(--tb-surface));
+}
+.tb-multi-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tb-multi-more {
+  flex: none; font-size: 12px; font-weight: 600; color: var(--tb-accent-text);
+  font-variant-numeric: tabular-nums;
+}
+.tb-multi-more:empty, .tb-multi-full { display: none; }
+.tb-multi-panel {
+  position: fixed; z-index: 60; box-sizing: border-box;
+  max-width: min(22em, calc(100vw - 16px)); max-height: min(340px, 60vh); overflow-y: auto;
+  padding: 4px; color: var(--tb-ink); background: var(--tb-bg);
+  border: 1px solid color-mix(in srgb, var(--tb-ink) 16%, var(--tb-rule));
+  border-radius: 10px; box-shadow: 0 14px 32px -10px rgba(0, 0, 0, .28);
+  font-family: var(--tb-font); font-size: 13.5px;
+}
+.tb-multi-panel[hidden] { display: none; }
+.tb-multi-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 4px 6px 6px 8px; color: var(--tb-muted); font-size: 12px;
+}
+.tb-multi-clear {
+  font: inherit; color: var(--tb-accent-text); background: none; border: 0;
+  padding: 2px 4px; border-radius: 4px; cursor: pointer;
+}
+.tb-multi-clear:disabled { color: var(--tb-muted); opacity: .5; cursor: default; }
+.tb-multi-opt {
+  display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px;
+  cursor: pointer; white-space: nowrap;
+}
+.tb-multi-opt:hover { background: var(--tb-surface); }
+.tb-multi-opt input { margin: 0; accent-color: var(--tb-accent); width: 15px; height: 15px; outline: none; }
+.tb-multi-opt:has(input:focus-visible) { outline: 2px solid var(--tb-accent); outline-offset: -2px; }
+.tb-multi-sep {
+  margin: 4px 8px 2px; padding-top: 6px; border-top: 1px solid var(--tb-rule);
+  color: var(--tb-muted); font-size: 11.5px;
+}
+.tb-multi-sep ~ .tb-multi-opt { color: var(--tb-muted); }
 
 button[data-tb-download] {
   font: inherit;
@@ -1146,8 +1212,9 @@ label > input[data-tb-search] { width: 11em; }
   /* The frozen cell's ground stops inside its border, so a collapsed row
      rule is never painted over and every row stays ruled to the edge. */
   :where(.tb-table, [data-tb-figure="table"]) :is(th, td):first-child { background-clip: padding-box; }
-  /* A name column, not a number (a rank stays as narrow as its digits). */
-  :is(.tb-table, [data-tb-figure="table"]) :is(th, td):first-child:not(.tb-num) {
+  /* A name column, not a number (a rank stays as narrow as its digits) or a
+     month ("Jan 2024" is one name). */
+  :is(.tb-table, [data-tb-figure="table"]) :is(th, td):first-child:not(.tb-num, .tb-period) {
     white-space: normal;
     width: 9em;                  /* a table cell takes a width as its least */
     max-width: 11em;
@@ -2048,8 +2115,7 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
     break-inside: avoid;
   }
   /* A heading never ends a page: it stays with what it heads. */
-  :is(h1, h2, h3, h4, h5, h6) { break-after: avoid; page-break-after: avoid; }
-  /* A table taller than what a page has left still keeps its card whole
+  :is(h1, h2, h3, h4, h5, h6) { break-after: avoid; page-break-after: avoid; }  /* A table taller than what a page has left still keeps its card whole
      where it can; where it cannot, the table breaks between rows instead of
      leaving a page empty under its card's heading: the header repeats on
      every page, no row splits, the total prints once at the end, and the
@@ -2088,9 +2154,16 @@ body:has(.tb-tabs[data-tb-nav="side"] > .tb-tab-bar) { padding-left: calc(232px 
 
   /* Truly interactive chrome has no meaning on paper. */
   .tb-receipt-btn, .tb-receipt-link, .tb-receipt-close, .tb-receipt-copy,
-  select[data-tb-filter], input[data-tb-search], button[data-tb-download] {
+  select[data-tb-filter], input[data-tb-search], button[data-tb-download], .tb-multi-panel {
     display: none;
   }
+  /* A multiple filter prints as what it picked: the label, then the values. */
+  .tb-multi {
+    border: 0; background: none !important; padding: 0; height: auto; max-width: none;
+    white-space: normal; color: var(--tb-ink);
+  }
+  .tb-multi-value, .tb-multi-more { display: none; }
+  .tb-multi-full { display: inline; }
 
   /* The tab bar is a control; its panels are content. Drop the bar and
      linearize every panel — a printed report must never hide half its

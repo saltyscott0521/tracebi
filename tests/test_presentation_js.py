@@ -1268,6 +1268,26 @@ process.stdout.write(JSON.stringify(tbl.querySelector('thead').children[0].child
         assert out == [humanise(c) for c in cols] == [
             "Plan", "Ending MRR", "YTD revenue", "Customers"]
 
+    def test_a_month_column_reads_as_the_server_writes_it(self):
+        """A month-shaped text column reads "Jan 2024" in the runtime's table
+        exactly as the server's display rows write it; a column with one
+        value that is not a month ("2024-13") keeps its own text, both sides."""
+        import pandas as pd
+        from tracebi.reports.template_package import display_rows
+        months = ["2024-01", "2024-12", None]
+        mixed = ["2024-02", "2024-13", "2024-03"]
+        out = _run_dom("""
+dataBlock('b', 'dim_month.month,mixed,n\\n2024-01,2024-02,1\\n2024-12,2024-13,2\\n,2024-03,3\\n');
+var tbl = el('table', { 'data-tb-figure': 'table', 'data-tb-binding': 'b' });
+loadRuntime();
+process.stdout.write(JSON.stringify(tbl.querySelector('tbody').children.map(function (tr) {
+  return tr.children.map(function (td) { return td.textContent; }); })));
+""")
+        server = display_rows(pd.DataFrame({"dim_month.month": months, "mixed": mixed,
+                                            "n": [1, 2, 3]}))
+        assert [[r["dim_month.month"], r["mixed"], r["n"]] for r in server] == out == [
+            ["Jan 2024", "2024-02", "1"], ["Dec 2024", "2024-13", "2"], ["", "2024-03", "3"]]
+
     def test_labels_and_formats_override_the_derived_defaults(self):
         out = _run_dom(self._SCRIPT)
         assert out["head"] == ["Market", "Net revenue, USD"]
@@ -1328,6 +1348,10 @@ process.stdout.write(JSON.stringify({
 """)
         assert out["label"] is True            # no names on the ring
         assert "fixed income" in out["legend"] and "money market" in out["legend"]
+        # Each slice's value is the row's own number, never a share the page
+        # worked out (no binding column holds one).
+        assert "2,726,364" in out["legend"] and "1,688,904" in out["legend"]
+        assert "%" not in out["legend"]
         assert out["data"] == [2726364, 1688904]
 
     _TOTALS = """

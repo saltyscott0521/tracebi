@@ -393,8 +393,10 @@ def display_rows(df, declared=None) -> list[dict]:
     """Each row of *df* as the text a built report's table shows for it:
     numeric columns through their format, everything else as plain text. The
     raw values stay in *df*; this is only how they are written."""
+    from tracebi.reports.derive import derive_text_formats, month_label
     numeric = {str(c) for c in df.select_dtypes(include="number").columns}
     formats = table_number_formats(df, declared)
+    months = derive_text_formats(df)
     # Column by column, never iterrows: a row of an all-numeric frame is one
     # float Series, which would print the year 1979 as "1979.0".
     names = [str(c) for c in df.columns]
@@ -404,7 +406,10 @@ def display_rows(df, declared=None) -> list[dict]:
         cells = {}
         for name, col in zip(names, values):
             fmt = formats.get(name) if name in numeric else None
-            cells[name] = _ssr_format(col[r], fmt) if fmt else _ssr_cell(col[r])
+            if name in months and month_label(col[r]) is not None:
+                cells[name] = month_label(col[r])
+            else:
+                cells[name] = _ssr_format(col[r], fmt) if fmt else _ssr_cell(col[r])
         rows.append(cells)
     return rows
 
@@ -1347,6 +1352,8 @@ class TemplatePackage:
                         parse_column_map(fig.attrs.get("data-tb-formats")).items()
                         if c in numeric})
         bars = _ssr_bar_scales(df, fig.attrs.get("data-tb-bars"), cols, numeric)
+        from tracebi.reports.derive import derive_text_formats, month_label
+        months = derive_text_formats(df)
 
         def cls(c, base=""):
             names = " ".join(n for n in ("tb-bar-cell" if c in bars else "", base) if n)
@@ -1379,6 +1386,8 @@ class TemplatePackage:
                     text = _ssr_format(raw, fmt) if fmt else _ssr_cell(raw)
                     cells.append(f'<td{cls(c, "tb-num")}>{_html.escape(text)}'
                                  f'{_ssr_bar(raw, bars.get(c))}</td>')
+                elif c in months and month_label(raw) is not None:
+                    cells.append(f'<td{cls(c, "tb-period")}>{_html.escape(month_label(raw))}</td>')
                 else:
                     cells.append(f"<td>{_html.escape(_ssr_cell(raw))}</td>")
             body.append("<tr>" + "".join(cells) + "</tr>")

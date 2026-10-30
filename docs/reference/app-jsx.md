@@ -115,7 +115,7 @@ Every gesture on a live page writes the same selection:
 | Piece | What it does |
 |---|---|
 | `<Filter column label>` with no `binding` | A page-wide filter. On a page with a slice (the default `"embed"`), every filter writes one selection, and every figure whose fact reaches the column recomputes from the embedded data, including figures mounted later. The chip reads Local, and the selection rides in the URL hash beside `useUrlState`'s keys. A figure that cannot recompute carries `data-tb-fixed`; one the field does not reach, `data-tb-unfiltered-by`. With `"embed": "none"`, or on a column no slice carries, it subsets the stamped rows of every binding with the column, and KPIs keep the stamped totals. |
-| `<Filter column multiple>` | A list box: the reader picks several values. |
+| `<Filter column multiple>` | A button naming what is picked; it opens a panel of checkboxes (keyboard: arrows, Space, Escape). Printed, it is the values picked. |
 | `<Segmented options value onChange label>` | One choice of a few: a view, a period. Use it to pick which figure shows, one literal-binding figure per option (`{p === "YTD" ? <Kpi binding="kpis_ytd" …/> : <Kpi binding="kpis_mtd" …/>}`), so each number keeps its trace. |
 | `useUrlState(key, initial)` | `useState` kept in the URL (`#view=Detail&period=YTD`), so a reload or a shared link opens where the reader was. |
 | `usePrinting()` | `true` while the page prints (Ctrl+P, and `tracebi report build --format pdf`). Render every view then, so the PDF holds the whole report: `{printing ? <><Overview /><Detail /></> : <View />}`. Give navigation `print:hidden`. |
