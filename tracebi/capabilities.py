@@ -2090,9 +2090,29 @@ def describe(brief: bool = False, topic: Optional[str] = None) -> dict:
                     "render_report_spec as one line (refusals included). "
                     "Dev-state under .tracebi/workbench/_discovery/.",
         },
+        "workbench_panel": {
+            "mcp": "preview_draft(kind='reports', path) | workbench_state(report, "
+                   "draft=False) | build_report(report) -> opens ui://tracebi/workbench",
+            "what": "In a host that shows MCP Apps (Claude on the web and in the "
+                    "desktop app) these three tools open the workbench in the "
+                    "conversation with the report or draft they name: the page "
+                    "itself in a sandboxed frame (filters, clicks, the selection "
+                    "bar, the trace), each figure's status, the open pins and what "
+                    "you last did. It refreshes by itself after each "
+                    "write_draft_file or build. The human clicks a figure and pins "
+                    "a note: it lands in the report path's pins.json and arrives as "
+                    "a message ('Pinned on <figure> in the draft of <path>: …'); "
+                    "read it with workbench_state(report=path, draft=true) (no draft "
+                    "for a library package) and resolve_pin(..., draft=true). The "
+                    "panel only pins, selects and asks; it never edits, publishes "
+                    "or approves. workbench_view and workbench_pin are the panel's "
+                    "tools, not yours. Without MCP Apps the results carry a link "
+                    "instead: preview_draft's url, or workbench_url (the app's "
+                    "/reports/<name>, which tracebi dev <name> serves).",
+        },
         "pins": {
             "cli": "tracebi report pins <name> [--resolve ID] [--note TEXT]",
-            "mcp": "resolve_pin(report, pin_id, note='')",
+            "mcp": "resolve_pin(report, pin_id, note='', draft=False)",
             "what": "Lists open pins. --resolve moves one into the resolved "
                     "list in pins.json (resolved_at, resolved_by, the agent's "
                     "note). Nothing is deleted. Writes only pins.json. "

@@ -50,6 +50,7 @@ Step-by-step instructions for common tasks.
 - [[sign-in]] — Turn on single sign-on so people sign in to TraceBi with their company account and get a role from their groups
 - [[push-from-a-laptop]] — Build and preview on your own machine, then send the files to the server with `tracebi push`
 - [[connect-chatgpt-and-claude]] — Let people add TraceBi as a connector in ChatGPT or Claude and sign in with their company login
+- [[workbench-in-your-agent]] — The report beside the chat, live; click a figure and pin a note for your agent
 - [[web-customization]] — Point the web server at your own workspace, add resources in code when files are not enough, restyle or extend the React UI, and deploy it
 - [[updating]] — Check for a new release and update your install with `tracebi update`
 

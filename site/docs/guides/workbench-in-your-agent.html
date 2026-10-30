@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The workbench in your agent — TraceBi docs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="The workbench in your agent">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%227%22%20fill%3D%22%232f5bea%22%2F%3E%3Cg%20transform%3D%22translate%283%203%29%20scale%281.3%29%22%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%221.6%22%20stroke-linecap%3D%22round%22%3E%3Ccircle%20cx%3D%224%22%20cy%3D%2215.5%22%20r%3D%222%22%2F%3E%3Cpath%20d%3D%22M5.85%2014.73%20L8.15%2013.77%20M11.1%2011.3%20L13.9%206.95%22%2F%3E%3Ccircle%20cx%3D%2210%22%20cy%3D%2213%22%20r%3D%222%22%2F%3E%3Ccircle%20cx%3D%2215.5%22%20cy%3D%224.5%22%20r%3D%222.9%22%20fill%3D%22%23fff%22%20stroke%3D%22none%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../docs.css">
+</head>
+<body>
+<nav class="topbar"><div class="bar">
+  <a class="brand" href="../../index.html">TraceBi</a>
+  <div class="nav-links">
+    <a href="../index.html">Docs</a>
+    <a href="https://github.com/saltyscott0521/tracebi">GitHub</a>
+    <button class="tgl" id="themeToggle" type="button" aria-label="Toggle light / dark">◐</button>
+  </div>
+</div></nav>
+<div class="shell">
+  <details class="side" id="nav" open>
+    <summary>Docs menu</summary>
+    <div class="links"><a href="../index.html">Overview</a>
+<div class="sec"><span>Start here</span><em>Install TraceBi and build your first report.</em></div>
+<a href="../start/plain-english.html">What is TraceBi</a>
+<a href="../start/quickstart.html">Get started</a>
+<a href="../start/your-first-report.html">Your first report</a>
+<a href="../start/demo-script.html">A ten-minute demo</a>
+<div class="sec"><span>Concepts</span><em>How data moves from raw files to a checked report.</em></div>
+<a href="../concepts/workspace-and-projects.html">Workspace and projects</a>
+<a href="../concepts/the-three-phase-workflow.html">The three-phase workflow</a>
+<a href="../concepts/transform.html">Transforms</a>
+<a href="../concepts/sink-contracts.html">Sink contracts</a>
+<a href="../concepts/model.html">Models</a>
+<a href="../concepts/models-and-connectors.html">Models and connectors</a>
+<a href="../concepts/report.html">Reports</a>
+<a href="../concepts/trace.html">The trace</a>
+<a href="../concepts/lineage.html">Lineage</a>
+<a href="../concepts/freeze-points.html">Freeze points</a>
+<div class="sec"><span>Guides</span><em>Step-by-step instructions for common tasks.</em></div>
+<a href="../guides/analyst-guide.html">TraceBi Analyst Guide</a>
+<a href="../guides/notebook-guide.html">Use TraceBi in a notebook</a>
+<a href="../guides/styling-a-report.html">Style a report</a>
+<a href="../guides/one-server.html">Run TraceBi on one server</a>
+<a href="../guides/connect-a-database.html">Connect a database</a>
+<a href="../guides/sign-in.html">Sign in with your company login</a>
+<a href="../guides/push-from-a-laptop.html">Push a report from your laptop</a>
+<a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>
+<a class="on" href="../guides/workbench-in-your-agent.html">The workbench in your agent</a>
+<a href="../guides/web-customization.html">Customize the web app</a>
+<a href="../guides/updating.html">Update TraceBi</a>
+<div class="sec"><span>Reference</span><em>Every file, key, command and route.</em></div>
+<a href="../reference/cli.html">CLI reference</a>
+<a href="../reference/tracebi-yaml.html">Workspace settings (tracebi.yaml)</a>
+<a href="../reference/connections-yaml.html">Connection files (YAML)</a>
+<a href="../reference/credentials.html">Credentials</a>
+<a href="../reference/environment-variables.html">Environment variables</a>
+<a href="../reference/transform-sql.html">SQL transforms</a>
+<a href="../reference/model-json.html">Model files (YAML or JSON)</a>
+<a href="../reference/measures.html">Measures</a>
+<a href="../reference/queries.html">Queries</a>
+<a href="../reference/pipeline-yaml.html">Pipeline files (YAML)</a>
+<a href="../reference/report-json.html">report.json</a>
+<a href="../reference/app-jsx.html">app.jsx</a>
+<a href="../reference/template-html.html">template.html</a>
+<a href="../reference/figure-helper.html">{{ figure(&quot;name&quot;) }}</a>
+<a href="../reference/number-formats.html">Number formats</a>
+<a href="../reference/chart-style.html">House themes and chart style</a>
+<a href="../reference/folder-yaml.html">Folder permissions (_folder.yaml)</a>
+<a href="../reference/api-routes.html">API routes</a>
+<div class="sec"><span>For agents</span><em>Procedures for AI agents. An agent reads AGENTS.md first.</em></div>
+<a href="../agents/sop-onboarding.html">SOP: Onboard a source, from a connection to a report</a>
+<a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a>
+<a href="../agents/sop-model-changes.html">SOP: Change a model&#x27;s measures and keys</a></div>
+  </details>
+  <main class="doc">
+<h1 id="the-workbench-in-your-agent">The workbench in your agent</h1>
+<p>When your agent works on a report over MCP, the workbench opens in the
+conversation: the report itself, live, beside what the agent is saying. You
+click a figure and pin a note on it ("this looks off"), and the agent reads
+it before its next edit. Nothing to install: it is part of the gateway.</p>
+<h2 id="before-you-begin">Before you begin</h2>
+<ul>
+<li>An agent connected to the gateway (<code>tracebi mcp</code>, or the app's <code>/mcp</code>; see
+  <a href="../guides/connect-chatgpt-and-claude.html">Connect ChatGPT and Claude</a>).</li>
+<li>A host that shows MCP Apps (the <code>io.modelcontextprotocol/ui</code> extension).
+  The MCP Apps specification lists ChatGPT, Claude, VS Code, Goose, Postman
+  and MCPJam among the hosts that render them. Claude Code is not one of
+  them: Claude Code users get a link instead; see
+  <a href="#without-mcp-apps">Without MCP Apps</a>.</li>
+</ul>
+<h2 id="what-you-see">What you see</h2>
+<p>The panel opens when the agent calls <code>preview_draft</code> (a report draft),
+<code>workbench_state</code> (a report in the library) or <code>build_report</code>. It shows:</p>
+<ul>
+<li><strong>The report</strong>, as itself, in its own sandboxed frame: filters, clicks, the
+  selection bar and the trace all work, and every number on it is the
+  report's own query result. A draft reads <strong>Draft</strong>; the chips say Local or
+  Fixed as they do anywhere else.</li>
+<li><strong>Figures</strong>: each figure's id and kind and where its number comes from
+  (model query, python-derived, marked unverified, or no data behind it).</li>
+<li><strong>Open pins</strong>: what you have asked for that the agent has not resolved yet.</li>
+<li><strong>What your agent did</strong>: each file it wrote, each query and build, newest
+  first, while the panel is open.</li>
+</ul>
+<p>It follows the agent: after every <code>write_draft_file</code> or build the page and
+the lists refresh by themselves, in a second or two. On a narrow panel the
+report comes first and the workbench under it; a wide one puts them side by
+side. It tells the host how tall it would like to be, so an inline panel grows
+with the report. It follows the host's light or dark theme. <strong>Expand</strong> asks the host for
+the full window where it offers one; <strong>Open in the app</strong> opens the same
+report in TraceBi.</p>
+<h2 id="pin-a-note">Pin a note</h2>
+<ol>
+<li>Click a figure in the report. The panel says <em>Pinning on</em> and its id.</li>
+<li>Type what is wrong or what you want, then <strong>Pin on figure</strong>. With no figure
+   chosen, <strong>Leave note</strong> leaves a note for the whole report.</li>
+<li>The pin is saved where the agent reads pins (<code>workbench_state</code>, the
+   <code>address_pins</code> prompt), and the panel tells the agent in the conversation:
+   <em>Pinned on kpi-revenue in the draft of sales/weekly: this looks off</em>.</li>
+</ol>
+<p>The agent acts on it, edits, and resolves the pin with a note. The panel only
+pins, selects and asks: it cannot write the report, publish or approve
+anything.</p>
+<h2 id="without-mcp-apps">Without MCP Apps</h2>
+<p>A host that does not show MCP Apps gets the same tools and results as before,
+plus a link to open: <code>preview_draft</code> returns the draft's <code>url</code>, and
+<code>workbench_state</code> and <code>build_report</code> return <code>workbench_url</code>, the report's page
+in the app (<code>/reports/&lt;name&gt;</code>), where Build mode shows the same workbench.</p>
+<ul>
+<li><strong>Claude Code:</strong> start the app with <code>tracebi dev &lt;name&gt;</code> (it opens
+  <code>http://127.0.0.1:8000/reports/&lt;name&gt;</code> with Build on) and keep it beside the
+  terminal; the Claude desktop app's preview pane can open that address. A
+  draft's link needs the app running too (<code>tracebi serve</code>).</li>
+<li>Set <code>TRACEBI_PUBLIC_URL</code> on a hosted server so the links are full addresses.</li>
+</ul>
+<h2 id="next">Next</h2>
+<ul>
+<li>How an agent authors a report: <a href="../agents/sop-authoring.html">SOP: Author a report through the gateway</a></li>
+<li>The same pins from the terminal: <code>tracebi report pins &lt;name&gt;</code> (<a href="../reference/cli.html">CLI reference</a>)</li>
+</ul>
+  </main>
+</div>
+<script>
+(function(){
+  // The nav ships open so the page needs no JS to work; on a phone that
+  // means scrolling past every link to reach the first word, so collapse it
+  // here and re-collapse after a tap.
+  var nav=document.getElementById('nav'), narrow=matchMedia('(max-width:900px)');
+  function fit(){ nav.open = !narrow.matches; }
+  fit(); narrow.addEventListener('change', fit);
+  nav.querySelector('.links').addEventListener('click', function(e){
+    if(e.target.tagName==='A' && narrow.matches) nav.open=false;
+  });
+
+  var r=document.documentElement, k='tb-theme', s=localStorage.getItem(k);
+  if(s) r.setAttribute('data-theme',s);
+  document.getElementById('themeToggle').addEventListener('click',function(){
+    var cur=r.getAttribute('data-theme');
+    if(!cur) cur=matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    var next=cur==='dark'?'light':'dark';
+    r.setAttribute('data-theme',next); localStorage.setItem(k,next);
+  });
+})();
+</script>
+</body>
+</html>

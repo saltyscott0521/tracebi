@@ -305,7 +305,8 @@ tracebi/               # Core Python package (~24,000 LOC)
                        #   the row-count rule (sql_row_estimates) and is_framework_table
   warehouse.py         # the warehouse's three tiers (tracebi.yaml warehouse:): Warehouse, SinkTarget; project_config.sink_target()
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
-  mcp_server.py        # agent gateway over MCP — 32 tools + 3 prompts (author_report, answer_question, address_pins);
+  mcp_server.py        # agent gateway over MCP — 32 tools + 3 prompts (author_report, answer_question, address_pins),
+                       #   + 2 for the workbench panel (workbench_view, workbench_pin: visibility app, listed only to an MCP Apps client);
                        #   the source tools read only a connection's agents: allowlist; describe_project = graph.py less the map-only node fields (lane, chip, sub, open)
   graph.py             # the workspace as one graph ({summary, nodes, edges}; summary counts every node, gaps beside): every source, transform, warehouse
                        #   group/table, model, report, the board's four facts as edges, a passport per node, gaps;
@@ -316,6 +317,9 @@ tracebi/               # Core Python package (~24,000 LOC)
   exports.py           # the gateway's export_table: a thin call over warehouse.export_table (the one implementation)
   _gateway_log.py      # opt-in gateway call log (TRACEBI_MCP_LOG=1) + the `tracebi agent log` summary
   workbench.py         # the live authoring surface (tracebi dev / report status)
+  workbench_app.py     # the workbench inside the agent: MCP Apps ui://tracebi/workbench (workbench_app.html, one file, no network);
+                       #   preview_draft / workbench_state / build_report open it; it polls workbench_view, pins via workbench_pin
+                       #   (a draft's pins: the report path's workbench; workbench_state / resolve_pin draft=true)
   _dev_server.py       # the classic stdlib preview server (loopback), `tracebi dev --classic`; `tracebi dev` itself opens the app in dev mode (`/reports/<name>` with Build on; `/data` with no name)
   _delivery.py         # `tracebi report send` — SMTP / Slack delivery of a built artifact
   _session_export.py   # session export — the committed lab-notebook record (HTML or md twin)

@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<title>TraceBi workbench</title>
+<!--
+  The workbench inside the agent (MCP Apps, ui://tracebi/workbench). The host
+  renders this in a sandboxed frame and is its only line out: JSON-RPC over
+  postMessage (ui/initialize, tools/call, ui/message, ui/open-link,
+  ui/notifications/size-changed). The report
+  itself sits in a second sandboxed frame inside it and talks to this page with
+  tracebi.js's host bridge (figure clicks, its selection). This page shows no
+  number of its own: every figure is the report's, drawn by the report.
+-->
+<style>
+:root {
+  --bg: #f7f7f5; --card: #ffffff; --ink: #1d1d1b; --muted: #66665f; --line: #e3e2dc;
+  --accent: #2f5bd3; --accent-ink: #ffffff; --warn: #9a5b00; --bad: #b3261e; --ok: #1f7a4d;
+  --chip: #eeede8; --focus: #2f5bd3;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg: #141413; --card: #1d1d1b; --ink: #ecebe6; --muted: #a3a29b; --line: #34332f;
+  --accent: #8ea8ff; --accent-ink: #10131c; --warn: #e3a64a; --bad: #ff8a80; --ok: #6fcf97;
+  --chip: #2a2926; --focus: #8ea8ff;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; }
+button { font: inherit; cursor: pointer; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--ink); padding: 4px 10px; }
+button:focus-visible, textarea:focus-visible, li[tabindex]:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+button:disabled { opacity: .5; cursor: default; }
+.app { display: grid; grid-template-rows: auto 1fr; height: 100vh; }
+.bar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--card); min-width: 0; }
+.bar button { white-space: nowrap; }
+.bar h1 { font-size: 14px; margin: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.chip { font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--chip); color: var(--muted); white-space: nowrap; }
+.chip--live::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--ok); margin-right: 5px; vertical-align: 1px; }
+.chip--stale::before { background: var(--warn); }
+.spacer { flex: 1; }
+.body { display: grid; grid-template-columns: minmax(0, 1fr) 320px; min-height: 0; }
+.page { overflow: auto; min-height: 0; background: var(--bg); }
+.page iframe { display: block; width: 100%; border: 0; height: 600px; min-height: 100%; background: transparent; }
+.rail { border-left: 1px solid var(--line); background: var(--card); overflow: auto; min-height: 0; }
+section { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+section h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 6px; font-weight: 600; }
+section h2 .n { margin-left: 6px; color: var(--ink); }
+ul { list-style: none; margin: 0; padding: 0; }
+li { padding: 5px 0; border-top: 1px solid var(--line); }
+li:first-child { border-top: 0; }
+.figs li { display: flex; gap: 6px; align-items: baseline; cursor: pointer; border-radius: 4px; padding-left: 4px; padding-right: 4px; }
+.figs li[aria-current="true"] { background: var(--chip); }
+.figs .st { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.figs .st--bad { color: var(--bad); }
+.figs .st--warn { color: var(--warn); }
+.muted { color: var(--muted); }
+.empty { color: var(--muted); margin: 0; }
+textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; resize: vertical; }
+.row { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+.msg { margin: 6px 0 0; }
+.msg--bad { color: var(--bad); }
+.errors { padding: 10px 12px; color: var(--bad); }
+.errors:empty { display: none; }
+.waiting { padding: 24px 16px; color: var(--muted); }
+.feed .when { color: var(--muted); font-size: 11px; margin-right: 6px; }
+.feed .who { font-size: 11px; color: var(--muted); }
+/* A panel beside the chat is narrow: the page first, the chrome under it. */
+@media (max-width: 760px) {
+  .body { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 62vh) auto; overflow: auto; }
+  .app { height: auto; min-height: 100vh; }
+  .page { height: 62vh; }
+  .rail { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="bar">
+    <h1 id="title">Workbench</h1>
+    <span class="chip" id="mode" hidden></span>
+    <span class="chip chip--live" id="live" hidden>Live</span>
+    <span class="spacer"></span>
+    <button type="button" id="open" hidden>Open in the app</button>
+    <button type="button" id="expand" hidden>Expand</button>
+  </header>
+  <div class="body">
+    <main class="page" id="pageWrap" aria-label="The report">
+      <div class="waiting" id="waiting">Waiting for your agent to open a report…</div>
+      <div class="errors" id="errors" role="alert"></div>
+      <iframe id="page" title="The report" sandbox="allow-scripts" hidden></iframe>
+    </main>
+    <aside class="rail" id="rail" aria-label="Workbench">
+      <section aria-labelledby="pin-h">
+        <h2 id="pin-h">Pin a note for your agent</h2>
+        <p class="muted" id="selected">Click a figure in the report to pin a note on it, or leave a note for the report.</p>
+        <textarea id="note" rows="2" placeholder="e.g. this looks off: should exclude cash"></textarea>
+        <div class="row">
+          <button type="button" class="primary" id="pinBtn" disabled>Pin</button>
+          <button type="button" id="clearSel" hidden>Clear figure</button>
+        </div>
+        <p class="msg" id="pinMsg" role="status"></p>
+      </section>
+      <section aria-labelledby="figs-h">
+        <h2 id="figs-h">Figures<span class="n" id="figsN"></span></h2>
+        <ul class="figs" id="figs"></ul>
+        <p class="empty" id="figsEmpty">No figures yet.</p>
+      </section>
+      <section aria-labelledby="pins-h">
+        <h2 id="pins-h">Open pins<span class="n" id="pinsN"></span></h2>
+        <ul id="pins"></ul>
+        <p class="empty" id="pinsEmpty">None open. Your agent reads them before its next edit.</p>
+      </section>
+      <section aria-labelledby="feed-h">
+        <h2 id="feed-h">What your agent did</h2>
+        <ul class="feed" id="feed"></ul>
+        <p class="empty" id="feedEmpty">What your agent does while this is open appears here.</p>
+      </section>
+    </aside>
+  </div>
+</div>
+<script>
+(function () {
+  "use strict";
+  var host = window.parent !== window ? window.parent : null;
+  var $ = function (id) { return document.getElementById(id); };
+  var frame = $("page");
+  var state = { target: null, version: "", figures: [], localStates: {}, selected: null,
+                selection: null, theme: "light", modes: [], timer: null, busy: false, failures: 0 };
+
+  /* ── The host bridge: JSON-RPC 2.0 over postMessage ───────────────────── */
+  var nextId = 1, pending = {};
+  function send(msg) { if (host) host.postMessage(msg, "*"); }
+  function request(method, params) {
+    return new Promise(function (resolve, reject) {
+      if (!host) { reject(new Error("no host")); return; }
+      var id = nextId++;
+      pending[id] = { resolve: resolve, reject: reject };
+      send({ jsonrpc: "2.0", id: id, method: method, params: params || {} });
+      setTimeout(function () {
+        if (pending[id]) { delete pending[id]; reject(new Error(method + " timed out")); }
+      }, 60000);
+    });
+  }
+  function notify(method, params) { send({ jsonrpc: "2.0", method: method, params: params || {} }); }
+  function callTool(name, args) {
+    return request("tools/call", { name: name, arguments: args }).then(function (r) {
+      if (r && r.isError) throw new Error(textOf(r) || (name + " failed"));
+      return (r && r.structuredContent) || parseText(r) || {};
+    });
+  }
+  function textOf(r) {
+    var c = (r && r.content) || [];
+    for (var i = 0; i < c.length; i++) if (c[i] && c[i].type === "text") return c[i].text;
+    return "";
+  }
+  function parseText(r) { try { return JSON.parse(textOf(r)); } catch (e) { return null; } }
+
+  window.addEventListener("message", function (e) {
+    var m = e.data;
+    if (frame.contentWindow && e.source === frame.contentWindow) {
+      if (m && m.tracebiFrame === 1) fromPage(m);
+      return;
+    }
+    if (!host || e.source !== host || !m || m.jsonrpc !== "2.0") return;
+    if (m.id !== undefined && m.method === undefined) {
+      var p = pending[m.id];
+      if (!p) return;
+      delete pending[m.id];
+      if (m.error) p.reject(new Error(m.error.message || "error")); else p.resolve(m.result);
+      return;
+    }
+    if (m.method) fromHost(m);
+  });
+
+  function fromHost(m) {
+    var params = m.params || {};
+    if (m.method === "ui/notifications/tool-input") targetFrom(params.arguments || {});
+    else if (m.method === "ui/notifications/tool-result") { if (state.target) refresh(true); }
+    else if (m.method === "ui/notifications/host-context-changed") applyContext(params);
+    else if (m.method === "ui/resource-teardown") {
+      if (state.timer) { clearInterval(state.timer); state.timer = null; }
+      state.target = null;
+    }
+    /* ui/notifications/tool-input-partial (arguments still streaming) is left
+     * alone: the panel opens on the complete tool-input. */
+    if (m.id !== undefined) send({ jsonrpc: "2.0", id: m.id, result: {} });   /* ping, teardown */
+  }
+
+  function applyContext(ctx) {
+    if (!ctx) return;
+    if (ctx.theme === "dark" || ctx.theme === "light") {
+      var changed = ctx.theme !== state.theme;
+      state.theme = ctx.theme;
+      document.documentElement.setAttribute("data-theme", ctx.theme);
+      if (changed && state.html) showPage(state.html);
+    }
+    if (ctx.availableDisplayModes) state.modes = ctx.availableDisplayModes;
+    $("expand").hidden = state.modes.indexOf("fullscreen") === -1 || ctx.displayMode === "fullscreen";
+  }
+
+  /* What the agent's tool call named: a draft (preview_draft's kind + path) or
+   * a library package (workbench_state's or build_report's report). */
+  function targetFrom(args) {
+    var t;
+    if (args.kind !== undefined || args.path !== undefined) {
+      if (args.kind !== "reports") { waiting("A model draft has no page. The workbench shows report drafts."); return; }
+      t = { report: String(args.path || ""), draft: true };
+    } else {
+      t = { report: String(args.report || ""), draft: !!args.draft };
+    }
+    if (state.target && t.report === state.target.report && t.draft === state.target.draft) return;
+    state.target = t; state.version = ""; state.selected = null;
+    refresh(true);
+    if (!state.timer) state.timer = setInterval(function () { refresh(false); }, 2000);
+  }
+
+  /* ── Live: poll the read-only view; it answers changed=false until it changes ── */
+  function refresh(force) {
+    if (!state.target || state.busy || (!force && document.hidden)) return;
+    state.busy = true;
+    callTool("workbench_view", { report: state.target.report, draft: state.target.draft,
+                                 since: force ? "" : state.version })
+      .then(function (v) {
+        state.failures = 0; live(true);
+        if (v.ok === false) { showErrors(v.errors); return; }
+        if (v.changed === false) return;
+        render(v);
+      })
+      .catch(function (err) { state.failures += 1; live(false); if (state.failures === 1) showErrors([err.message]); })
+      .then(function () { state.busy = false; });
+  }
+
+  function live(ok) {
+    var el = $("live");
+    el.hidden = false;
+    el.textContent = ok ? "Live" : "Reconnecting";
+    el.className = "chip chip--live" + (ok ? "" : " chip--stale");
+  }
+
+  function render(v) {
+    state.version = v.version || "";
+    var t = v.target || {};
+    $("title").textContent = t.report || "Your workspace";
+    var mode = $("mode");
+    mode.hidden = false;
+    mode.textContent = t.draft ? "Draft" : (t.report ? "Working copy" : "Notes and feed");
+    state.link = t.link || "";
+    $("open").hidden = !state.link;
+    showErrors(v.errors || []);
+    state.figures = v.figures || [];
+    renderFigures();
+    renderPins(v.pins || []);
+    renderFeed(v.feed || []);
+    $("waiting").hidden = true;
+    if (v.html) { state.html = v.html; showPage(v.html); }
+    else { frame.hidden = true; if (!t.report) waiting("No report is open. Notes you leave here reach your agent."); }
+    updatePinButton();
+  }
+
+  function waiting(text) { var w = $("waiting"); w.textContent = text; w.hidden = false; }
+
+  function showErrors(errors) {
+    var el = $("errors");
+    el.textContent = "";
+    (errors || []).forEach(function (e) { var d = document.createElement("div"); d.textContent = e; el.appendChild(d); });
+  }
+
+  /* The report, as itself, in its own sandboxed frame. A page that follows the
+   * reader's system (data-tb-mode="auto") follows the host's theme instead. */
+  function showPage(html) {
+    var wrap = $("pageWrap"), top = wrap.scrollTop;
+    var themed = html.replace(/(<html\b[^>]*?)data-tb-mode="auto"/i, '$1data-tb-mode="' + state.theme + '"');
+    frame.hidden = false;
+    frame.onload = function () { wrap.scrollTop = top; };
+    frame.srcdoc = themed;
+  }
+
+  function fromPage(m) {
+    if (m.type === "size" && m.height) frame.style.height = Math.max(200, Math.ceil(m.height)) + "px";
+    else if (m.type === "ready") {
+      /* A refresh keeps the reader's selection: hand the new page the old one. */
+      if (state.selection) frame.contentWindow.postMessage(
+        { tracebiFrame: 1, type: "tracebi-set-selection", selection: state.selection }, "*");
+      if (state.selected) flash(state.selected);
+    } else if (m.type === "figure" && known(m.id)) select(m.id);
+    else if (m.type === "tracebi-selection" && m.payload) {
+      state.selection = m.payload.selection || null;
+      state.localStates = {};
+      (m.payload.figures || []).forEach(function (f) { if (f.id) state.localStates[f.id] = f.state; });
+      renderFigures();
+    }
+  }
+
+  /* The page's script is the report author's: only an id the server listed is
+   * taken, so nothing the page says reaches the agent but a figure's own id. */
+  function known(id) {
+    return typeof id === "string" && /^[A-Za-z0-9_.:-]{1,120}$/.test(id) && state.figures.some(function (f) { return f.id === id; });
+  }
+
+  function flash(id) { if (frame.contentWindow) frame.contentWindow.postMessage({ tracebiFrame: 1, type: "flash", ids: [id] }, "*"); }
+
+  function select(id) {
+    state.selected = id;
+    $("selected").textContent = "";
+    $("selected").appendChild(document.createTextNode("Pinning on "));
+    var c = document.createElement("code"); c.textContent = id; $("selected").appendChild(c);
+    $("clearSel").hidden = false;
+    renderFigures();
+    updatePinButton();
+    /* The agent's next turn knows what the person is looking at; no reply asked. */
+    request("ui/update-model-context", { content: [{ type: "text",
+      text: "In the workbench the person selected figure " + id + " of " + describeTarget() + "." }] })
+      .catch(function () { /* a host without it: the pin still carries the id */ });
+  }
+
+  function describeTarget() {
+    var t = state.target || {};
+    return t.draft ? "the draft of " + t.report : (t.report || "the workspace");
+  }
+
+  /* The figure's status in the workbench's words: where its number comes from,
+   * and on a live page whether the selection recomputed it (Local) or it stays
+   * as built (Fixed). Never the number itself: that is the page's. */
+  var PROVENANCE = { verified: "model query", derived: "python-derived", unverified: "marked unverified" };
+  function renderFigures() {
+    var ul = $("figs");
+    ul.textContent = "";
+    $("figsN").textContent = state.figures.length ? String(state.figures.length) : "";
+    $("figsEmpty").hidden = state.figures.length > 0;
+    state.figures.forEach(function (f) {
+      var li = document.createElement("li");
+      li.tabIndex = 0;
+      if (f.id === state.selected) li.setAttribute("aria-current", "true");
+      var code = document.createElement("code"); code.textContent = f.id || "(no id)"; li.appendChild(code);
+      var kind = document.createElement("span"); kind.className = "muted"; kind.textContent = f.kind || ""; li.appendChild(kind);
+      var st = document.createElement("span");
+      var words = f.unbound ? "no data behind it" : (PROVENANCE[f.provenance] || f.provenance || "");
+      var local = state.localStates[f.id];
+      if (!f.unbound && local) words += " · " + (local.charAt(0).toUpperCase() + local.slice(1));
+      if (f.pinned) words += " · pinned";
+      st.className = "st" + (f.unbound ? " st--bad" : f.provenance === "unverified" ? " st--warn" : "");
+      st.textContent = words;
+      li.appendChild(st);
+      function pick() { if (known(f.id)) { select(f.id); flash(f.id); } }
+      li.addEventListener("click", pick);
+      li.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+      ul.appendChild(li);
+    });
+  }
+
+  function renderPins(pins) {
+    var ul = $("pins");
+    ul.textContent = "";
+    $("pinsN").textContent = pins.length ? String(pins.length) : "";
+    $("pinsEmpty").hidden = pins.length > 0;
+    pins.forEach(function (p) {
+      var li = document.createElement("li");
+      if (p.kind !== "message") { var c = document.createElement("code"); c.textContent = p.id; li.appendChild(c); li.appendChild(document.createTextNode(" ")); }
+      li.appendChild(document.createTextNode(p.note || "(no note)"));
+      ul.appendChild(li);
+    });
+  }
+
+  function renderFeed(feed) {
+    var ul = $("feed");
+    ul.textContent = "";
+    $("feedEmpty").hidden = feed.length > 0;
+    feed.forEach(function (e) {
+      var li = document.createElement("li");
+      var when = document.createElement("span"); when.className = "when";
+      when.textContent = (e.at || "").slice(11, 16); li.appendChild(when);
+      li.appendChild(document.createTextNode(e.text || e.name || ""));
+      if (!e.agent) { var who = document.createElement("span"); who.className = "who"; who.textContent = " · " + (e.name || "shown"); li.appendChild(who); }
+      ul.appendChild(li);
+    });
+  }
+
+  function updatePinButton() {
+    var note = $("note").value.trim();
+    $("pinBtn").disabled = !state.target || !(note || state.selected);
+    $("pinBtn").textContent = state.selected ? "Pin on figure" : "Leave note";
+  }
+  $("note").addEventListener("input", updatePinButton);
+  $("clearSel").addEventListener("click", function () {
+    state.selected = null; $("clearSel").hidden = true;
+    $("selected").textContent = "Click a figure in the report to pin a note on it, or leave a note for the report.";
+    renderFigures(); updatePinButton();
+  });
+
+  /* The panel's one write: a pin. Then it tells the agent, where the host lets it. */
+  $("pinBtn").addEventListener("click", function () {
+    var t = state.target, note = $("note").value.trim(), msg = $("pinMsg");
+    if (!t) return;
+    $("pinBtn").disabled = true;
+    msg.className = "msg"; msg.textContent = "Pinning…";
+    callTool("workbench_pin", { report: t.report, draft: t.draft, figure: state.selected || "", note: note })
+      .then(function (r) {
+        if (r.ok === false) throw new Error((r.errors || ["refused"]).join("; "));
+        $("note").value = "";
+        msg.textContent = "Pinned. Your agent reads it before its next edit.";
+        refresh(true);
+        return request("ui/message", { role: "user", content: { type: "text", text: r.message } })
+          .then(function () { msg.textContent = "Pinned, and your agent was told."; })
+          .catch(function () { msg.textContent = "Pinned. Ask your agent to address your pins."; });
+      })
+      .catch(function (err) { msg.className = "msg msg--bad"; msg.textContent = err.message; })
+      .then(updatePinButton);
+  });
+
+  $("open").addEventListener("click", function () {
+    if (state.link) request("ui/open-link", { url: state.link }).catch(function () {});
+  });
+  $("expand").addEventListener("click", function () {
+    request("ui/request-display-mode", { mode: "fullscreen" })
+      .then(function (r) { applyContext({ displayMode: r && r.mode }); }).catch(function () {});
+  });
+
+  /* ── Start: the handshake, then wait for the tool call that opened us ── */
+  if (!host) { waiting("Open this from an agent that shows MCP Apps."); return; }
+  /* What the panel would like to be: the header plus the taller of the report
+   * (its frame grows to the page) and the workbench beside it. A host with a
+   * flexible container sizes the panel to this. */
+  var lastSize = "";
+  function reportSize() {
+    var bar = document.querySelector(".bar"), narrow = window.matchMedia("(max-width: 760px)").matches;
+    var height = narrow ? document.documentElement.scrollHeight
+      : bar.offsetHeight + Math.max($("pageWrap").scrollHeight, $("rail").scrollHeight);
+    var size = { width: document.documentElement.scrollWidth, height: Math.ceil(height) };
+    var key = size.width + "x" + size.height;
+    if (key === lastSize) return;
+    lastSize = key;
+    notify("ui/notifications/size-changed", size);
+  }
+  function watchSize() {
+    reportSize();
+    if (typeof ResizeObserver === "undefined") return;
+    var ro = new ResizeObserver(reportSize);
+    [document.documentElement, $("pageWrap"), $("rail"), frame].forEach(function (el) { ro.observe(el); });
+  }
+
+  request("ui/initialize", { protocolVersion: "2026-01-26",
+                             appInfo: { name: "tracebi-workbench", version: "1" },
+                             /* The host switches only to modes the app declares. */
+                             appCapabilities: { availableDisplayModes: ["inline", "fullscreen"] } })
+    .then(function (r) {
+      applyContext((r && r.hostContext) || {});
+      notify("ui/notifications/initialized", {});
+      watchSize();
+    })
+    .catch(function () { /* a host that answers no handshake may still send the tool input */ });
+})();
+</script>
+</body>
+</html>

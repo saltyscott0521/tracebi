@@ -27,8 +27,10 @@ from it.
 
 ### The tools
 
-The gateway has thirty-two tools and three prompts (`author_report`,
-`answer_question`, `address_pins`) that run this procedure for you. The MCP
+The gateway has thirty-two tools for you and three prompts (`author_report`,
+`answer_question`, `address_pins`) that run this procedure for you, plus two
+the workbench panel calls (`workbench_view`, `workbench_pin`; a host keeps
+them from you, and a client without MCP Apps is not shown them). The MCP
 `tools/list` call is the source of truth if this table drifts. This SOP walks
 the spec path. A report package is the same loop with `build_report`. Over a
 hosted connection, the draft tools are how a package reaches the server, with
@@ -47,11 +49,11 @@ no file access at all (step 3, "With only the gateway"; and
 | `build_report` | Build a report package under `reports/` to one HTML file and a manifest |
 | `fetch_artifact` | Read back a built HTML or manifest, so a remote agent can deliver it |
 | `list_reports` | Reports the workspace already has, each built one with its last build's `manifest_path` |
-| `workbench_state` | What the `tracebi dev` workbench shows, including a reviewer's pins |
-| `resolve_pin` | Mark a reviewer's pin as addressed, with a note |
+| `workbench_state` | What the workbench shows, including a reviewer's pins (`draft=true`: your report draft at that path). Opens the workbench panel in a host with MCP Apps; `workbench_url` is the link otherwise |
+| `resolve_pin` | Mark a reviewer's pin as addressed, with a note (`draft=true` for a draft's pin) |
 | `verify_manifest` | Re-run every recorded query in a manifest and classify each figure (`reproduces`, `source_drift`, `model_changed`, `unexplained`, `unverifiable`) |
 | `list_drafts` · `start_draft` · `read_draft` · `write_draft_file` | Your drafts on the server: start one (a copy of the published report or model when its path is published, else empty), read it, write one allowed file |
-| `preview_draft` | Validate and render a draft in memory; returns errors, warnings and its address in the app |
+| `preview_draft` | Validate and render a draft in memory; returns errors, warnings and its address in the app. Opens the workbench panel beside the chat in a host with MCP Apps ([[workbench-in-your-agent]]) |
 | `model_impact` | For a model draft: each published report that reads the model, unchanged, moves or breaks |
 | `delete_draft` | Delete one of your drafts; the published copy is unchanged |
 | `downstream` | Every built report figure that reads a table, a source table or a measure, each report with its verdict and `manifest_path`: what breaks if it goes, and which report shows a number |
@@ -252,9 +254,16 @@ library as a draft. It is the route the `author_report` prompt names:
    each `query_model` result's `binding` object under `data.<name>`, then
    `template.html` (or `app.jsx`) with every number a figure bound to it.
 4. `preview_draft(kind="reports", path)` until `ok` is `true`; give the
-   person its `url`.
-5. `publish_draft(kind="reports", path, note)` once they agree.
-6. `build_report(report=path)`, then `verify_manifest(manifest=<its
+   person its `url`. In a host with MCP Apps the workbench opens beside the
+   chat with the draft in it ([[workbench-in-your-agent]]), and refreshes on
+   every `write_draft_file` after this one: keep editing, the person watches.
+5. **The person pins.** A pin they make in the panel arrives as a message
+   ("Pinned on kpi-revenue in the draft of …"). Read every open pin with
+   `workbench_state(report=path, draft=true)` before your next edit, act on
+   it, then `resolve_pin(report=path, pin_id, note, draft=true)`. For a
+   report in the library the `address_pins` prompt walks the same loop.
+6. `publish_draft(kind="reports", path, note)` once they agree.
+7. `build_report(report=path)`, then `verify_manifest(manifest=<its
    manifest_path>)`, as steps 5 and 6 below do for a spec.
 
 A measure the question needs and the model lacks is a model draft first
