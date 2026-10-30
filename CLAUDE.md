@@ -284,7 +284,7 @@ tracebi/               # Core Python package (~24,000 LOC)
                        #   (author the requester, committer the approver, TraceBi-Request trailer, never pushed; else commit_note says why)
   dryrun.py            # an agent's proposed SQL transform run once against a throwaway copy: scratch DuckDB under .tracebi/dryrun/<id>/,
                        #   warehouse READ_ONLY, -- source: via the real loader, external access locked, ATTACH/LOAD/scanner fns refused,
-                       #   -- sink: and COPY not run, statement timeout; tables + first 20 rows, checks (contracts.observe), lineage, error
+                       #   -- sink: and COPY not run, statement timeout; tables (each new | changed | unchanged against the warehouse; first 20 rows only for new and changed), checks (contracts.observe), lineage, error
   _push.py             # `tracebi push` — packages/models → drafts, code → a code request
   transforms.py        # phase ① transforms: find one, its form (sql/python/notebook), run it + its .contract.yaml
   contracts.py         # sink contracts: closed checks + certificate + manifest join
@@ -298,7 +298,7 @@ tracebi/               # Core Python package (~24,000 LOC)
   warehouse.py         # the warehouse's three tiers (tracebi.yaml warehouse:): Warehouse, SinkTarget; project_config.sink_target()
   verify.py            # re-run recorded queries, compare fingerprints, classify drift
   mcp_server.py        # agent gateway over MCP — 30 tools + 3 prompts (author_report, answer_question, address_pins);
-                       #   the source tools read only a connection's agents: allowlist; describe_project = graph.py
+                       #   the source tools read only a connection's agents: allowlist; describe_project = graph.py less the map-only node fields (lane, chip, sub, open)
   graph.py             # the workspace as one graph ({summary, nodes, edges}): every source, transform, warehouse
                        #   group/table, model, report, the board's four facts as edges, a passport per node, gaps;
                        #   GET /api/graph and the gateway's describe_project serve it (design/control-tower.md);
@@ -426,7 +426,8 @@ tracebi run-pipeline sales_etl --status        # last run per layer, executes no
 
 # Agent / tooling context
 tracebi context                                # framework vocabulary as JSON
-tracebi context --brief                        # the token-lean tier (~44% of the payload)
+tracebi context --brief                        # the token-lean tier (≤45% of the payload; brief.omitted names the topics)
+tracebi context --topic presentation           # one section alone (the page grammar); get_context(topic=) over MCP
 tracebi session export [--format md]           # save the discovery notebook → explorations/
 tracebi session clear                          # reset a session feed (refused while dev serves)
 tracebi context --model sales_model            # plus that model's schema
