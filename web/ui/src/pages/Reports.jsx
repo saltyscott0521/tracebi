@@ -387,7 +387,11 @@ function TraceSteps({ manifest, focus, verdict, checkedAt, selection }) {
   const slice = manifest.semantic_contract?.[model]?.slice
   const table = slice?.tables?.find(t => t.name === spec?.fact)?.source || spec?.fact
   const cert = table ? (manifest.transform_contracts || {})[table] : null
-  const sources = Object.keys(cert?.sources || {})
+  // What the writing run read, in the words the build recorded: each
+  // connection (and the snapshot that stood in for it) and the input files.
+  // An older build records only the connections' names.
+  const read = cert?.read || Object.keys(cert?.sources || {})
+  const writer = cert?.writer || cert?.transform
   // The dimensions the query reached through its joins: what it is cut and filtered by.
   const joined = [...new Set([...(spec?.dimensions || []), ...Object.keys(spec?.filters || {})]
     .filter(c => c.includes('.')).map(c => c.split('.')[0]))]
@@ -405,8 +409,8 @@ function TraceSteps({ manifest, focus, verdict, checkedAt, selection }) {
         <Step n={1} k="Source">
           {cert ? (
             <>
-              {sources.length > 0 && <>{sources.join(' + ')} → </>}
-              {cert.transform ? <code>{cert.transform}</code> : 'a transform'} wrote <code>{table}</code>
+              {read.length > 0 && <>{read.join(' + ')} → </>}
+              {writer ? <code>{writer}</code> : 'a transform'} wrote <code>{table}</code>
               {' · '}{(SINK_WORDS[cert.status] || SINK_WORDS.no_contract)(cert.checks)}
             </>
           ) : table ? <><code>{table}</code> · no sink certificate recorded</> : 'Not recorded'}

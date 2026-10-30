@@ -685,8 +685,11 @@ body, the same text as `tracebi knowledge <slug>`).
    and `manifest_path` — pass `manifest_path` as
    `verify_manifest(manifest=...)`. A PDF
    (`tracebi report build <name> --format pdf`, or
-   `build_report(..., format="pdf")`) is a print of that built HTML and
-   carries no trace. A pdf build returns `pdf_path`; pass that as
+   `build_report(..., format="pdf")`) is a print of that built HTML: its
+   last pages, "How these numbers were made", print each figure's query
+   and a short fingerprint, the sink contracts, the build and the
+   `tracebi verify` command, but the PDF itself is not verifiable. A pdf
+   build returns `pdf_path`; pass that as
    `fetch_artifact(path=...)`.
 
 **Repeat it with a `schedule` block.** A recurring report declares when it

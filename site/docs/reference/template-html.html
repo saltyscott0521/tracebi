@@ -561,7 +561,7 @@ status.</p>
   link, a click on any value figure (at that figure's row), or a chart
   tooltip's "Trace →". A page with no masthead gets a floating "Trace" button.
   Escape closes it.</li>
-<li><strong>Header:</strong> the report's name and <em>How each number was made</em>, when it was
+<li><strong>Header:</strong> the report's name and <em>How these numbers were made</em>, when it was
   built and from which model, the verdict chip, <em>"This page does not claim
   the numbers are right; it records how each was made so it can be
   checked."</em>, and how to check the file (<code>tracebi verify --file &lt;name&gt;.html</code>,
@@ -571,11 +571,16 @@ status.</p>
   one line (<code>fair_value by dim_issuer.sector · order fair_value desc</code>, only the
   ordering keys you wrote), the fingerprint's first 8 characters with Copy,
   and "Raw" (the query as run, the full fingerprint) behind a disclosure.</li>
-<li><strong>About this build:</strong> the sink contracts, the stated methodology, who built
-  it, the build stamp and git.</li>
+<li><strong>About this build:</strong> the sink contracts (each table's status, the
+  transform that wrote it and what that run read: <em>crm.issuer_ratings —
+  snapshot inputs/issuer_ratings.csv</em> when the committed snapshot stood in,
+  then the input files), the stated methodology, who built it, the build
+  stamp and git.</li>
 <li><strong>Size:</strong> 420px on the right, a full-height sheet on a phone. It prints as
-  an appendix with every disclosure open. Its badges keep their own tones; a
-  theme never recolours them.</li>
+  a compact appendix headed <em>How these numbers were made</em>: one row per
+  figure (label and value, the query in one line, the short fingerprint),
+  About this build open, each figure's Raw left out. Its badges keep their
+  own tones; a theme never recolours them.</li>
 </ul>
 <h2 id="editorial-pages">Editorial pages</h2>
 <p>What <code>tracebi new-report</code> writes by default: a report written to be read. A

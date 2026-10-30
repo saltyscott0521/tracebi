@@ -155,3 +155,42 @@ def test_a_report_script_cannot_reach_the_network_while_printing(tmp_path: Path)
     finally:
         server.shutdown()
     assert hits == []
+
+
+def test_the_printed_trace_is_one_row_per_figure_and_no_raw_json(tmp_path: Path) -> None:
+    """Printed, the trace is the appendix "How these numbers were made": one
+    compact row per figure (label, the query in one line, a short
+    fingerprint) and the verify command, never the query as raw JSON — the
+    bug was a PDF of 130 pages, nearly all of it every disclosure opened."""
+    _chromium_or_skip()
+    from playwright.sync_api import sync_playwright
+
+    html = _built_html(tmp_path)
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(html.resolve().as_uri(), wait_until="load")
+        page.wait_for_function(
+            "() => document.documentElement.getAttribute('data-tb-ready') === '1'",
+            timeout=30_000,
+        )
+        page.emulate_media(media="print")
+        page.evaluate("() => window.dispatchEvent(new Event('beforeprint'))")
+        printed = page.evaluate(
+            """() => {
+              const drawer = document.querySelector('.tb-receipt-drawer');
+              const shown = el => el.getClientRects().length > 0;
+              return {
+                text: drawer.innerText,
+                rows: [...drawer.querySelectorAll('.tb-receipt-row')].filter(shown).length,
+                json: [...drawer.querySelectorAll('.tb-receipt-json, .tb-receipt-details')].filter(shown).length,
+              };
+            }"""
+        )
+        browser.close()
+    assert "How these numbers were made" in printed["text"]
+    assert printed["rows"] == 1                      # the one chart figure
+    assert printed["json"] == 0
+    assert '"fact"' not in printed["text"]           # no query as JSON on paper
+    assert "revenue by dim_customer.region" in printed["text"]
+    assert "tracebi verify --file bars.html" in printed["text"]

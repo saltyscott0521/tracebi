@@ -182,7 +182,7 @@ def project_graph(registry, *, root: Optional[str] = None) -> dict:
     from tracebi.connections import agent_may_read
     from tracebi.desk import cached_verdict
     from tracebi.model_registry import model_path
-    from tracebi.sources import connection_tables, transforms_listing, warehouses
+    from tracebi.sources import connection_tables, read_words, transforms_listing, warehouses
     from tracebi.web.api.routers.connectors import list_connectors
     from tracebi.web.api.routers.reports import list_reports
     from tracebi.web.api.routers.sources import list_inputs
@@ -315,11 +315,13 @@ def project_graph(registry, *, root: Optional[str] = None) -> dict:
             reads.setdefault(r.get("connection"), []).append(r)
         said = []
         for conn, rs in reads.items():
-            snap = " (snapshot)" if any(r.get("snapshot") for r in rs) else ""
-            said.append(f"{conn}.{rs[0]['table']}{snap}" if len(rs) == 1
+            said.append(read_words(rs[0]["ref"], rs[0].get("snapshot")) if len(rs) == 1
                         else f"{conn} · {_plural(len(rs), 'table')}")
+        # A snapshot the run read in a connection's place is named once, with it.
+        snaps = {r.get("snapshot") for rs in reads.values() for r in rs}
         said += [a.split(":", 1)[1] for a, z in edges if z == tid
-                 and (a.startswith("file:") or (not reads and a.startswith("source:")))]
+                 and (a.startswith("file:") or (not reads and a.startswith("source:")))
+                 and a.split(":", 1)[1] not in snaps]
         written = [c for w in whs for tb in w["tables"]
                    if (tb.get("written_by") or {}).get("transform") == name
                    for c in [tb.get("contract")]]

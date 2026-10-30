@@ -288,7 +288,7 @@ Every built page has one; you write nothing for it.
   link, a click on any value figure (at that figure's row), or a chart
   tooltip's "Trace →". A page with no masthead gets a floating "Trace" button.
   Escape closes it.
-- **Header:** the report's name and *How each number was made*, when it was
+- **Header:** the report's name and *How these numbers were made*, when it was
   built and from which model, the verdict chip, *"This page does not claim
   the numbers are right; it records how each was made so it can be
   checked."*, and how to check the file (`tracebi verify --file <name>.html`,
@@ -298,11 +298,16 @@ Every built page has one; you write nothing for it.
   one line (`fair_value by dim_issuer.sector · order fair_value desc`, only the
   ordering keys you wrote), the fingerprint's first 8 characters with Copy,
   and "Raw" (the query as run, the full fingerprint) behind a disclosure.
-- **About this build:** the sink contracts, the stated methodology, who built
-  it, the build stamp and git.
+- **About this build:** the sink contracts (each table's status, the
+  transform that wrote it and what that run read: *crm.issuer_ratings —
+  snapshot inputs/issuer_ratings.csv* when the committed snapshot stood in,
+  then the input files), the stated methodology, who built it, the build
+  stamp and git.
 - **Size:** 420px on the right, a full-height sheet on a phone. It prints as
-  an appendix with every disclosure open. Its badges keep their own tones; a
-  theme never recolours them.
+  a compact appendix headed *How these numbers were made*: one row per
+  figure (label and value, the query in one line, the short fingerprint),
+  About this build open, each figure's Raw left out. Its badges keep their
+  own tones; a theme never recolours them.
 
 ## Editorial pages
 

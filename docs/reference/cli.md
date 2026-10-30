@@ -218,7 +218,7 @@ spec is compiled to a package first.
 | Flag | Effect |
 |---|---|
 | `--output` | Where to write the HTML. |
-| `--format pdf` | Also write a `.pdf`, printed from the built HTML by headless Chromium. It carries no trace. Needs `pip install 'tracebi[pdf]'` and `python -m playwright install chromium`. |
+| `--format pdf` | Also write a `.pdf`, printed from the built HTML by headless Chromium. Its last pages, "How these numbers were made", print each figure's query in one line and a short fingerprint, the sink contracts, the build time and git SHA, and the `tracebi verify` command; the PDF itself is not verifiable, the HTML and manifest are. Needs `pip install 'tracebi[pdf]'` and `python -m playwright install chromium`. |
 | `--badges` | Draw a provenance badge on each figure. The manifest is the same either way. |
 
 With the `pdf` extra installed, every build also writes

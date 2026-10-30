@@ -3584,7 +3584,9 @@ def cmd_report(args: argparse.Namespace) -> int:
             print(f"failed to print '{args.name}' to PDF: {exc}", file=sys.stderr)
             return 1
         print(f"  pdf → {pdf_path}")
-        print("  a print of the HTML; it carries no trace")
+        print("  a print of the HTML; its last pages say how each number was made (each figure's\n"
+              "  query and fingerprint, the sink contracts, the build); the HTML and manifest\n"
+              "  stay what tracebi verify checks")
 
     if args.action == "send":
         return _report_send(args, output, manifest)
@@ -4418,8 +4420,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_report.add_argument(
         "--format", choices=["html", "pdf"], default="html",
         help="With `build`: html (default), or pdf to also write a sibling "
-             ".pdf — a print of the built HTML. The PDF carries no trace; "
-             "the HTML and manifest stay the checkable artifact. Needs "
+             ".pdf — a print of the built HTML whose last pages say how each "
+             "number was made (each figure's query and fingerprint, the sink "
+             "contracts, the build); the HTML and manifest stay the checkable "
+             "artifact. Needs "
              "pip install 'tracebi[pdf]' and "
              "python -m playwright install chromium.",
     )
