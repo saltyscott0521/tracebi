@@ -900,7 +900,7 @@ input[type="search"]::-webkit-search-cancel-button { opacity: .5; }
 .glance__item--reproduces { color: var(--green-text); }
 .glance__item--needs-a-look { color: var(--amber-text); }
 .glance__item--does-not-reproduce { color: var(--red-text); }
-.glance__item--not-checked, .glance__item--never-built, .glance__item--none { color: var(--muted); }
+.glance__item--not-checked, .glance__item--checking, .glance__item--never-built, .glance__item--none { color: var(--muted); }
 .glance__item--never-built::before { background: transparent; border: 1px solid currentColor; }
 .library__find { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
 .library__chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -2199,6 +2199,15 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 .dbx-mini--dimension { fill: var(--role-dimension); }
 .dbx-mini--bridge { fill: var(--role-bridge); }
 .dbx-mini.is-on { fill: var(--blue); }
+/* Fit, in words: the canvas opens readable, so every table is one click away. */
+.dbx-fit {
+  position: absolute; top: var(--space-3); left: var(--space-3); z-index: 4; min-height: 28px; padding: 0 10px;
+  font: inherit; font-size: var(--text-sm); color: var(--text); background: var(--card);
+  border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer;
+}
+.dbx-fit:hover { border-color: var(--border-hl); }
+.dbx-fit:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.dbx-fit ~ .dbx-canvas__note { top: 52px; }
 .dbx-canvas__note {
   position: absolute; top: var(--space-3); left: var(--space-3); right: var(--space-3); z-index: 4; max-width: 56ch;
   padding: var(--space-2) var(--space-3); font-size: var(--text-sm); color: var(--text-2);
@@ -2490,13 +2499,25 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 .map-sum__warn { color: var(--amber-text); font-weight: 500; }
 .map-frame { container-type: inline-size; }
 .map-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+/* The lanes keep the width. A selected piece's passport floats over them,
+   sticky, on the side away from the piece (.pass--left for models and
+   reports); the workspace's sits under the map. */
 @container (min-width: 980px) {
-  .map-wrap { grid-template-columns: minmax(0, 1fr) 272px; }
-  .pass { position: sticky; top: 16px; }
+  .map-wrap > .map { grid-area: 1 / 1; }
+  .pass--float {
+    grid-area: 1 / 1; justify-self: end; position: sticky; top: 16px; z-index: 4; width: 320px; margin-top: 32px;
+    max-height: calc(100vh - 32px); overflow-y: auto; border-color: var(--border-strong);
+  }
+  .pass--float.pass--left { justify-self: start; }
 }
+.pass { position: relative; }
+.pass__close { position: absolute; top: 8px; right: 8px; }
+.pass--float .pass__name, .pass--float .pass__eyebrow { padding-right: 28px; }
+.map-wrap > .pass:not(.pass--float) { max-width: 560px; }
 .map { container-type: inline-size; min-width: 0; }
+/* The gutters are the wires' room: an S between two lanes, never under a card. */
 .map-board {
-  position: relative; display: grid; gap: 14px; align-items: start;
+  position: relative; display: grid; gap: 14px 32px; align-items: start;
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 .map-lane { --lane: var(--role-table); min-width: 0; padding: 8px 6px 10px; border-radius: var(--radius-lg); background: color-mix(in srgb, var(--lane) 7%, var(--bg)); transition: opacity var(--t); }
@@ -2534,11 +2555,14 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 .mcard__main:focus-visible, .mchip:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .mcard__t { display: flex; align-items: baseline; gap: 6px; min-width: 0; font-size: var(--text-caption); font-weight: 600; line-height: 1.35; }
 .mcard__t .mdot { align-self: center; }
-/* A name gets two lines before it ends in an ellipsis: a lane is narrow. */
+/* A name gets two lines before it ends in an ellipsis: a lane is narrow. It
+   breaks only where Map.jsx allows (after _ . /), never inside a word; focus
+   shows it whole, as hover's title does. */
 .mcard__nm {
-  min-width: 0; overflow: hidden; overflow-wrap: anywhere;
+  min-width: 0; overflow: hidden; overflow-wrap: normal; word-break: normal;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 }
+.mcard__main:focus-visible .mcard__nm { -webkit-line-clamp: unset; overflow-wrap: anywhere; }
 .mcard__chip {
   display: inline-block; margin-right: 6px; padding: 0 5px; border-radius: var(--radius-sm); background: var(--blue-lt); color: var(--accent-text);
   font-family: var(--font-mono); font-size: var(--text-eyebrow); font-weight: 500; white-space: nowrap;
@@ -2569,7 +2593,9 @@ a.dlist__row:hover .review__open, a.review__open:hover, .review__btn:hover { tex
 .map-wires path { fill: none; stroke: var(--border-strong); stroke-width: 1.5; transition: stroke var(--t), stroke-width var(--t), opacity var(--t); }
 .map-wires path.is-dim { opacity: .15; }
 .map-wires path.is-lit { stroke: var(--blue); stroke-width: 2.5; }
-.map-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 12px 2px 0; font-size: var(--text-sm); color: var(--text-2); }
+.map-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; min-height: 20px; margin: 0 2px 12px; font-size: var(--text-sm); color: var(--text-2); }
+.map-legend b { color: var(--text); font-weight: 500; }
+.map-legend--empty { color: var(--text); }
 .map-legend__item { display: inline-flex; align-items: center; gap: 6px; }
 
 @container (max-width: 640px) {

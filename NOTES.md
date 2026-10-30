@@ -4,6 +4,76 @@ A running log of key discussions, decisions, and concepts for the TraceBi projec
 
 ---
 
+## 2026-10-30 — The library and Data pages feel instant and readable (DATA-UX)
+
+**Tests import the tree they live in.** The editable install points at the main
+checkout, so from a git worktree every subprocess a test started (the UI smoke
+server, CLI journeys, `run_workflow.py`) ran main's code. `tests/conftest.py`
+now prepends its own tree to `PYTHONPATH` at import (subprocesses inherit it),
+and `scripts/ui_audit.py` serves its own checkout. Proved from a worktree with
+no `PYTHONPATH` set: a probe test's subprocess imported main before and the
+worktree after, and the smoke run passed new steps only the worktree's code
+has. Run the suite as `python -m pytest` (`~/.local/bin/pytest` is another
+interpreter). `design/pitfalls.md` 16.
+
+**The library paints at once.** Two causes, measured on the reference
+workspace, every report built:
+- The kept verdicts never stayed kept. Live discovery's rescan recorded each
+  model's file as `models/x.yaml` where the first read had it absolute, so
+  `verdict_key` changed every ~5 s and each library load re-ran every build's
+  queries (`/api/desk` 3.6 s on the second read). The key now takes the file's
+  absolute path.
+- A process that had computed nothing waited for all of them. The state store
+  now keeps the newest verdict per receipt (`tracebi_verdicts`, Alembic 0008:
+  manifest path, verdict, detail, `computed_at`, and `inputs`, a SHA-256 of
+  `repr(verdict_key)`; NULL when uncacheable). A stored verdict whose digest
+  matches is reused exactly as the in-memory one is (same inputs, same re-run),
+  in any process: a CLI build's `warm()` records it, so a server started after
+  `tracebi report build` paints those verdicts green with their real
+  `computed_at`. `GET /api/desk?quick=1` re-runs nothing: any other verdict
+  comes back `pending` with the last recorded answer, is never `open` and never
+  listed as waiting. The app reads `?quick=1`, then (only if something is
+  pending) `/api/desk` in the background and replaces the cache in place.
+  `verdictOf` gives a pending build the new state **Checking** (neutral; its
+  title says what the last re-check said and when), so no green appears that
+  this process or the store did not compute for these inputs. The library's
+  glance says **Checked <time>**, the oldest verdict's `computed_at`.
+
+Measured (`scratchpad/DATA-UX/tool.py measure`, cold = fresh server process):
+
+| | before | after, store empty | after, store kept |
+|---|---|---|---|
+| `/api/desk` cold | 3,831 ms | 4,148 ms | 250 ms |
+| `/api/desk?quick=1` cold | — | 238 ms | 278 ms |
+| home, verdicts on screen (cold) | 5,100 ms | 1,128 ms (Checking) | 1,078 ms |
+| home, verdicts settled (cold) | 5,100 ms | 5,091 ms | 1,101 ms |
+| home to idle (cold) | 6,052 ms | 5,828 ms | 2,058 ms |
+| home to idle (second load) | 4,362 ms | 1,515 ms | 1,643 ms |
+
+The store is not a second source of truth: a row is used only when its inputs'
+digest equals the one computed now, which is the rule the process cache already
+had. Rejected: storing verdicts as `tracebi_runs` rows (History would fill with
+a row per re-check), and showing a stale stored green with an "as of" (a green
+the current inputs never earned).
+
+**Lineage.** The lanes take the map's width: a selected piece's passport floats
+over them, sticky, on the side away from the piece (models and reports: left),
+with × and Escape to close; the workspace's passport sits under the map. The
+gutters between lanes are 32 px and a wire leaves its card's edge at its chip's
+height, so no wire runs under a card. A name breaks only after `_ . /`
+(`<wbr>`), clamps to two lines with an ellipsis, shows whole on focus and in its
+title on hover. Each lens's legend is one line above the lanes; Flow at rest
+says what it shows and how to light it, lit it names the piece; Freshness,
+Trust and What agents see each say so when there is nothing to show.
+
+**Schema canvases** open at a readable zoom (0.9 or more: a table name, 14 px,
+reads at 12.6 px or more) on the selected table and its joins, else on the
+first fact (tree order) of the selected group or of the schema; the Warehouse
+schema opens on its first group (`opensOnGroup`). A group picked in the tree is
+framed the same way. **Show all** (top left) fits every table; the controls'
+Fit still does. Reset layout frames as it opens.
+
+Screenshots: `scratchpad/DATA-UX/before/`, `after/` (1440 and 390, light and dark).
 ## 2026-10-30 — The workbench opens inside the agent (WORKBENCH-APP)
 
 The owner asked for the workbench to come up beside the chat in an agent such

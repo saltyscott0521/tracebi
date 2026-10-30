@@ -869,11 +869,28 @@ def test_the_workflow_leaves_every_report_built_where_the_app_looks(reference, m
         assert [b["computed_at"] for b in second] == [b["computed_at"] for b in first]
         assert took < 1.0, f"a desk read of kept verdicts took {took:.2f}s"
 
-        # A transform rewrites the warehouse: every verdict is re-run, and
-        # still reproduces (the transform is idempotent).
+        # A server started afresh keeps nothing in memory: the library's quick
+        # read paints each verdict the state store kept for these inputs at
+        # once, as it was computed, re-running none.
+        from tracebi import desk
+        desk.invalidate()
+        started = time.monotonic()
+        painted = c.get("/api/desk", params={"quick": 1}).json()["builds"]
+        took = time.monotonic() - started
+        assert not any(b.get("pending") for b in painted)
+        assert [b["computed_at"] for b in painted] == [b["computed_at"] for b in first]
+        assert took < 1.0, f"a quick desk read of stored verdicts took {took:.2f}s"
+
+        # A transform rewrites the warehouse: a quick read re-runs nothing and
+        # offers nothing to open, each verdict pending with the last answer;
+        # the next read re-runs every one, and it still reproduces (the
+        # transform is idempotent).
         release_warehouses()
         code, out = run_cli("run-transform", "saas_transform")
         assert code == 0, out
+        moved = c.get("/api/desk", params={"quick": 1}).json()
+        assert all(b["pending"] for b in moved["builds"]) and moved["open"] is None
+        assert {b["report"]: b["verdict"] for b in moved["builds"]} == builds
         after = c.get("/api/desk").json()["builds"]
         assert not any(b["cached"] for b in after)
         assert {b["report"]: b["verdict"] for b in after} == builds

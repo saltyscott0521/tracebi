@@ -352,7 +352,7 @@ folder).</p>
 </tr>
 <tr>
 <td><code>GET</code></td>
-<td><code>/api/desk[?fresh=1]</code></td>
+<td><code>/api/desk[?fresh=1\|quick=1]</code></td>
 <td>viewer</td>
 </tr>
 <tr>
@@ -420,7 +420,7 @@ folder).</p>
 </tr>
 <tr>
 <td><code>/api/desk</code></td>
-<td>Only reports the caller may view: pins, drafts, verdicts, builds (each with <code>values</code> [{id, label, text, delta, spark}], its KPIs as built), sinks. Each verdict or build row has <code>computed_at</code> and <code>cached</code>. A verdict is kept while its manifest, its models and their warehouse (and certificate) are unchanged; <code>?fresh=1</code> re-runs all.</td>
+<td>Only reports the caller may view: pins, drafts, verdicts, builds (each with <code>values</code> [{id, label, text, delta, spark}], its KPIs as built), sinks. Each verdict or build row has <code>computed_at</code> and <code>cached</code>. A verdict is kept while its manifest, its models and their warehouse (and certificate) are unchanged, in the process and in the state store (<code>tracebi_verdicts</code>), so a server just started reuses one computed before it; <code>?fresh=1</code> re-runs all. <code>?quick=1</code> re-runs none: a verdict not kept for its current inputs comes back <code>pending</code> with the last recorded verdict and its <code>computed_at</code> (or <code>verdict: null</code>), is not offered as <code>open</code> nor listed in <code>verdicts</code>, and the library shows it as Checking, never green, until it asks again without <code>quick</code>.</td>
 </tr>
 <tr>
 <td><code>/download</code></td>

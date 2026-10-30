@@ -114,6 +114,11 @@ package was broken and `tzdata` was missing.
 - *Rule:* read the traceback before touching code. Install the missing
   package (`pip install --ignore-installed cryptography cffi tzdata`) and
   rerun.
+- *And:* a subprocess imports whatever checkout the editable install points
+  at, so from a git worktree the smoke server and CLI journeys ran main's code
+  (2026-10-30). `tests/conftest.py` prepends the tests' own tree to
+  `PYTHONPATH`; run the suite as `python -m pytest`, so the test process
+  imports that tree too.
 
 ## Editing files
 

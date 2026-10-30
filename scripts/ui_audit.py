@@ -84,6 +84,9 @@ def _get(url: str, timeout: float = 5):
 def serve(project: Path, app: str, workdir: Path):
     """Copy *project*, build its data, serve it. Returns (base_url, process)."""
     dest = workdir / project.name
+    # Serve this checkout, not the one an editable install points at.
+    os.environ["PYTHONPATH"] = os.pathsep.join(
+        p for p in (str(REPO), os.environ.get("PYTHONPATH", "")) if p)
     shutil.copytree(project, dest, ignore=shutil.ignore_patterns(
         "__pycache__", "*.pyc", ".DS_Store", "data", "output", ".tracebi"))
     if (dest / "run_workflow.py").is_file():

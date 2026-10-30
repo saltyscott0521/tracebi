@@ -332,6 +332,20 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(board.locator('[data-node="report:saas_model/mrr_dashboard"]')).to_have_class(lit)
             expect(board.locator('[data-node="report:portfolio_model/portfolio_book"]')).to_have_class(
                 re.compile(r"\bis-dim\b"))
+            # Flow at rest says what it shows and how to light it; lit, it names the piece.
+            page.mouse.move(0, 0)
+            lenses.get_by_role("button", name="Flow").click()
+            legend = page.locator('[data-legend="flow"]')
+            expect(legend).to_contain_text("Hover, focus or select a piece to light its whole path")
+            board.locator('[data-node="model:saas_model"]').hover()
+            expect(legend).to_contain_text("Lit: everything that feeds SaaS Subscriptions")
+            # A selected piece's passport floats over the lanes, which keep
+            # their width (on a map wide enough); Escape closes it.
+            board.locator('[data-node="model:saas_model"] .mcard__main').click()
+            page.wait_for_url(re.compile(r"node=model%3Asaas_model"))
+            expect(page.get_by_role("complementary", name="Passport")).to_have_class(re.compile(r"\bpass--float\b"))
+            page.keyboard.press("Escape")
+            expect(page).not_to_have_url(re.compile(r"node="))
             # What agents see: the CRM's one table is on its allowlist, so the
             # CRM stays lit; a transform is never read, only proposed, so it goes dark.
             lenses.get_by_role("button", name="What agents see").click()
@@ -351,6 +365,13 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             page.wait_for_url(re.compile(r"/data/warehouse\?view=schema&group="))
             expect(page.get_by_role("complementary", name="Inspector").locator(
                 '[data-writer="holdings_transform"]')).to_be_visible()
+            # The canvas opens on that group's fact at a size its names read
+            # (14 px at 0.9 or more), never fitted to every table.
+            page.locator('.react-flow__node[data-id="fact_cashflows"], .react-flow__node[data-id="fact_holdings"]').first.wait_for()
+            scale = page.locator(".dbx .react-flow__viewport").evaluate(
+                "el => new DOMMatrix(getComputedStyle(el).transform).a")
+            assert scale >= 0.9, scale
+            expect(page.get_by_role("button", name="Show all")).to_be_visible()
             fail_on_browser_errors()
 
             # Sources: connections and input files in one list, the console's:
@@ -845,7 +866,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
                     built["verdict"] = "source_drift"
                 route.fulfill(json=desk)
 
-            page.route("**/api/desk", source_changed)
+            page.route("**/api/desk*", source_changed)   # the quick read and the re-check after it
             page.reload()
             # The desk re-runs every recorded query before it answers.
             expect(lib_row).to_contain_text("Needs a look", timeout=60_000)
@@ -863,7 +884,7 @@ def test_real_app_smoke(tmp_path: Path) -> None:
             expect(why).to_be_visible()
             assert "Reproduces" not in why.inner_text()
             expect(frame.locator(".tb-receipt-drawer .tb-verdict").first).to_have_text("Needs a look")
-            page.unroute("**/api/desk")
+            page.unroute("**/api/desk*")
 
             # A library row opens the same page, titled with the report's own name.
             page.goto(base + "/")

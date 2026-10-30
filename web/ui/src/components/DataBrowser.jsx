@@ -355,7 +355,12 @@ const writeSaved = (key, value) => {
   try { localStorage.setItem(key, JSON.stringify(value)) } catch { /* a private window: it is not kept */ }
 }
 
-function Canvas({ schema, infoOf, selected, onSelect, storeKey, emptyNote }) {
+// The least zoom the canvas opens or reveals at: a table's name (14 px) reads
+// at 12.6 px or more. Fit (Show all) may go smaller; opening never does.
+const READABLE = 0.9
+const FRAME_PAD = 40
+
+function Canvas({ schema, infoOf, selected, onSelect, storeKey, emptyNote, scope }) {
   const flow = useReactFlow()
   const wrap = useRef(null)
   const key = `tracebi-diagram-${storeKey}`
@@ -409,20 +414,53 @@ function Canvas({ schema, infoOf, selected, onSelect, storeKey, emptyNote }) {
     }
   }), [schema, byId, opened, xOf, selected])
 
-  // Open at 100 %, the top left of the drawing in view: the tables read at
-  // their own size, and the minimap and Fit show the rest.
-  const start = useCallback(() => {
-    const all = nodes.map(n => n.position)
-    if (!all.length) return
-    // With a table selected, open on it and the tables it joins, at a size
-    // the columns can be read; else the whole schema (never larger than life).
-    if (selected && byId[selected]) {
-      const ids = [selected, ...near].map(id => ({ id }))
-      flow.fitView({ nodes: ids, padding: 0.12, maxZoom: 1, duration: 0 })
-      return
-    }
-    flow.fitView({ padding: 0.08, maxZoom: 1, duration: 0 })
-  }, [nodes, selected, byId, near]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Frame *ids* (the first is the anchor) at a size the names read: the
+  // whole of them when they fit between READABLE and 100 %, else centred on
+  // the anchor's head at READABLE.
+  const frame = useCallback((ids, animate = false) => {
+    const el = wrap.current
+    const ns = ids.map(id => flow.getNode(id)).filter(Boolean)
+    if (!el || !ns.length) return
+    const hOf = n => nodeHeight(byId[n.id])
+    const x0 = Math.min(...ns.map(n => n.position.x))
+    const y0 = Math.min(...ns.map(n => n.position.y))
+    const x1 = Math.max(...ns.map(n => n.position.x + NODE_W))
+    const y1 = Math.max(...ns.map(n => n.position.y + hOf(n)))
+    const W = el.clientWidth - 2 * FRAME_PAD
+    const H = el.clientHeight - 2 * FRAME_PAD
+    const fit = Math.min(W / (x1 - x0), H / (y1 - y0))
+    const zoom = Math.min(1, Math.max(READABLE, fit))
+    const a = ns[0]
+    const [cx, cy] = fit >= READABLE
+      ? [(x0 + x1) / 2, (y0 + y1) / 2]
+      : [a.position.x + NODE_W / 2, a.position.y + Math.min(hOf(a), H / zoom) / 2]
+    flow.setCenter(cx, cy, { zoom, duration: animate ? 250 : 0 })
+  }, [flow, byId])
+
+  // What the canvas opens on: the selected table and the tables it joins;
+  // else the first fact of *scope* (a group's tables) or of the schema, in the
+  // tree's order (else the table with the most joins), and its dimensions. Never everything at a size nobody reads:
+  // Show all (and the controls' Fit) is one click away.
+  const opening = useCallback(() => {
+    if (selected && byId[selected]) return [selected, ...[...near].filter(id => id !== selected)]
+    const among = scope?.length ? scope.filter(id => byId[id]) : schema.tables.map(t => t.id)
+    if (!among.length) return []
+    const joins = id => schema.edges.filter(e => e.from === id || e.to === id).length
+    const hub = among.find(id => byId[id].role === 'fact') || [...among].sort((a, b) => joins(b) - joins(a))[0]
+    const next = schema.edges.filter(e => e.from === hub || e.to === hub).map(e => (e.from === hub ? e.to : e.from))
+    return [hub, ...new Set(next.filter(id => id !== hub && (!scope?.length || among.includes(id))))]
+  }, [selected, byId, near, scope, schema])
+
+  const start = useCallback(() => { frame(opening()) }, [frame, opening])
+  const showAll = () => flow.fitView({ padding: 0.08, maxZoom: 1, duration: 250 })
+
+  // A group picked in the tree comes into view, framed as the canvas opens.
+  const scopeKey = (scope || []).join()
+  const scoped = useRef(false)
+  useEffect(() => {
+    if (!scoped.current) { scoped.current = true; return }
+    if (scope?.length && !selected) frame(opening(), true)
+  }, [scopeKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // A table selected from the tree comes into view if it is not already.
   const reveal = (id, animate = true) => {
@@ -436,7 +474,7 @@ function Canvas({ schema, infoOf, selected, onSelect, storeKey, emptyNote }) {
     const W = el.clientWidth
     const Hh = el.clientHeight
     if (sx >= 0 && sy >= 0 && sx + NODE_W * zoom <= W && sy + Math.min(h, Hh) * zoom <= Hh) return
-    const z = Math.max(zoom, 0.85)
+    const z = Math.max(zoom, READABLE)
     flow.setCenter(n.position.x + NODE_W / 2, n.position.y + Math.min(h, Hh / z - 64) / 2, { zoom: z, duration: animate ? 250 : 0 })
   }
   const first = useRef(true)
@@ -445,11 +483,11 @@ function Canvas({ schema, infoOf, selected, onSelect, storeKey, emptyNote }) {
     if (selected) reveal(selected)
   }, [selected]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Back to the ring, the whole of it in view, as it opens.
+  // Back to the ring, framed as it opens.
   const reset = () => {
     writeSaved(key, {})
     setNodes(base({}))
-    setTimeout(() => flow.fitView({ padding: 0.08, maxZoom: 1, duration: 0 }), 0)
+    setTimeout(() => frame(opening()), 0)
   }
 
   return (
@@ -481,6 +519,7 @@ function Canvas({ schema, infoOf, selected, onSelect, storeKey, emptyNote }) {
         <MiniMap position="bottom-right" pannable zoomable ariaLabel="Overview of the diagram" style={{ width: 150, height: 96 }}
                  nodeClassName={n => `dbx-mini dbx-mini--${byId[n.id]?.role || 'table'}${n.id === selected ? ' is-on' : ''}`} />
       </ReactFlow>
+      <button type="button" className="dbx-fit" onClick={showAll} title="Fit every table in view">Show all</button>
       {emptyNote && schema.edges.length === 0 && <div className="dbx-canvas__note">{emptyNote}</div>}
     </div>
   )
@@ -622,8 +661,10 @@ const modeOf = w => (w >= 1040 ? 'wide' : w >= 640 ? 'mid' : 'phone')
  *   shows even where the inspector is a sheet.
  * - *model*: the model whose page this is (a model's browser), so a table's
  *   Used by names it without linking to itself.
+ * - *opensOnGroup*: with nothing selected, the canvas opens on the first
+ *   group's fact (the warehouse: one writer's tables, not every one at once).
  */
-export default function DataBrowser({ schema, storeKey, infoOf: given, summary, groupView, measuresOf, emptyNote, label, summaryOpen, model }) {
+export default function DataBrowser({ schema, storeKey, infoOf: given, summary, groupView, measuresOf, emptyNote, label, summaryOpen, model, opensOnGroup }) {
   const [params, setParams] = useSearchParams()
   const table = schema.tables.some(t => t.id === params.get('table')) ? params.get('table') : null
   const groupId = groupView && schema.groups.some(g => g.id === params.get('group')) ? params.get('group') : null
@@ -714,7 +755,8 @@ export default function DataBrowser({ schema, storeKey, infoOf: given, summary, 
       ) : <div className="dbx__tree">{tree}</div>}
       <div className="dbx__canvas">
         <ReactFlowProvider>
-          <Canvas schema={schema} infoOf={infoOf} selected={table} onSelect={selectTable} storeKey={storeKey} emptyNote={emptyNote} />
+          <Canvas schema={schema} infoOf={infoOf} selected={table} onSelect={selectTable} storeKey={storeKey} emptyNote={emptyNote}
+                  scope={(group || (opensOnGroup ? schema.groups[0] : null))?.tables} />
         </ReactFlowProvider>
         {mode === 'mid' && !shown && (
           <div className="dbx__details"><Btn size="sm" variant="outline" onClick={() => setSheet(true)}>Details</Btn></div>

@@ -165,3 +165,85 @@ def test_a_kept_verdicts_key_moves_with_its_inputs_and_only_them(tmp_path, monke
     # A source that cannot say when it changed is never kept.
     memory = DataModel("m").add_connector(MemoryConnector("mem", {}))
     assert key({"m": memory, "other": other}) is None
+
+
+def test_a_kept_verdicts_key_names_a_model_file_one_way(tmp_path, monkeypatch):
+    """Catches the key that changed when live discovery's rescan recorded the
+    model's file relative to the working directory instead of absolute: every
+    verdict then re-ran on the next read, seconds per library load."""
+    import os
+
+    from tracebi import model_registry
+    from tracebi.connectors.duckdb_connector import DuckDBConnector
+    from tracebi.desk import verdict_key
+    from tracebi.model.data_model import DataModel
+
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "models").mkdir()
+    (tmp_path / "models" / "m.yaml").write_text("name: m\n", encoding="utf-8")
+    warehouse = tmp_path / "w.duckdb"
+    duckdb.connect(str(warehouse)).close()
+    models = {"m": DataModel("m").add_connector(DuckDBConnector("wh", database=str(warehouse)))}
+    receipt = tmp_path / "r.html.manifest.json"
+    receipt.write_text(json.dumps({"sections": [{
+        "dataset_lineage": [{"metadata": {"model": "m"}}]}]}), encoding="utf-8")
+    manifest = json.loads(receipt.read_text(encoding="utf-8"))
+
+    def key(path):
+        monkeypatch.setattr(model_registry, "model_path", lambda name: path)
+        return verdict_key(str(receipt), os.stat(receipt), manifest, models)
+
+    assert key("models/m.yaml") == key(str(tmp_path / "models" / "m.yaml"))
+
+
+def test_a_new_process_paints_the_last_verdicts_and_never_a_green_it_did_not_compute(
+        tmp_path, monkeypatch):
+    """The state store keeps each build's last verdict with a digest of its
+    inputs (tracebi_verdicts). Catches a process that has computed nothing yet
+    making the library wait for every re-run; a stored verdict whose inputs
+    moved served as if current; and a quick read that re-runs anything or
+    offers a receipt it has not checked as the one to open."""
+    import time
+
+    from tracebi import desk, verify
+
+    out = tmp_path / "output"
+    out.mkdir()
+    receipt = out / "r.html.manifest.json"
+    receipt.write_text(json.dumps({"report_name": "r", "sections": []}), encoding="utf-8")
+    (out / "r.html").write_text("<p>r</p>", encoding="utf-8")
+    runs = []
+
+    def checked(manifest, models):
+        runs.append(1)
+        return {"verdict": "reproduces", "summary": {}}
+
+    monkeypatch.setattr(verify, "verify_manifest", checked)
+
+    # Nothing recorded yet: a quick read re-runs nothing and claims nothing.
+    desk.invalidate()
+    quick = desk.review(str(tmp_path), quick=True)
+    assert runs == [] and quick["open"] is None and quick["verdicts"] == []
+    assert quick["builds"][0]["pending"] is True and quick["builds"][0]["verdict"] is None
+
+    first = desk.review(str(tmp_path))["builds"][0]
+    assert (runs, first["verdict"], first["cached"]) == ([1], "reproduces", False)
+
+    # A new process (nothing kept in memory): the stored verdict, as computed.
+    desk.invalidate()
+    painted = desk.review(str(tmp_path), quick=True)
+    row = painted["builds"][0]
+    assert runs == [1] and "pending" not in row
+    assert (row["verdict"], row["computed_at"], row["cached"]) == ("reproduces", first["computed_at"], True)
+    assert painted["open"]["report"] == "r"
+
+    # Its inputs move: the stored verdict is only what the last re-check said.
+    time.sleep(0.01)
+    receipt.write_text(json.dumps({"report_name": "r", "sections": [], "x": 1}), encoding="utf-8")
+    desk.invalidate()
+    painted = desk.review(str(tmp_path), quick=True)
+    row = painted["builds"][0]
+    assert runs == [1] and row["pending"] is True and painted["open"] is None
+    assert (row["verdict"], row["computed_at"]) == ("reproduces", first["computed_at"])
+    again = desk.review(str(tmp_path))["builds"][0]
+    assert runs == [1, 1] and "pending" not in again and again["cached"] is False

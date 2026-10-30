@@ -554,3 +554,41 @@ def schedule_records(output_dir: Union[str, Path], url: Optional[str] = None) ->
     """Schedule runs for *output_dir*, oldest first, after a one-time import."""
     import_schedule_log(output_dir, url=url)
     return _schedule_rows(output_dir, url=url)
+
+
+# ── The library's last verdicts ──────────────────────────────────────────────
+# One row per build receipt (tracebi_verdicts, revision 0008): what the last
+# re-run of its recorded queries said, when, and a digest of the inputs it
+# read. tracebi/desk.py writes it and reads it back, so a process that has
+# computed nothing yet can still say what was last computed, and when.
+
+def record_verdict(manifest: str, inputs: Optional[str], verdict: str,
+                   detail: Optional[str], computed_at: str,
+                   url: Optional[str] = None) -> None:
+    """Keep the newest verdict on *manifest* (one row per receipt)."""
+    eng = ensure(url)
+    from sqlalchemy import text
+    row = {"manifest": manifest, "inputs": inputs, "verdict": verdict,
+           "detail": detail, "computed_at": computed_at}
+    with eng.begin() as conn:
+        done = conn.execute(text(
+            "UPDATE tracebi_verdicts SET inputs = :inputs, verdict = :verdict, "
+            "detail = :detail, computed_at = :computed_at WHERE manifest = :manifest"
+        ), row).rowcount
+        if not done:
+            conn.execute(text(
+                "INSERT INTO tracebi_verdicts (manifest, inputs, verdict, detail, computed_at) "
+                "VALUES (:manifest, :inputs, :verdict, :detail, :computed_at)"
+            ), row)
+
+
+def recorded_verdicts(url: Optional[str] = None) -> dict[str, dict]:
+    """Every kept verdict, by receipt path: ``{inputs, verdict, detail, computed_at}``."""
+    eng = ensure(url)
+    from sqlalchemy import text
+    with eng.connect() as conn:
+        rows = conn.execute(text(
+            "SELECT manifest, inputs, verdict, detail, computed_at FROM tracebi_verdicts"
+        )).mappings().all()
+    return {r["manifest"]: {k: r[k] for k in ("inputs", "verdict", "detail", "computed_at")}
+            for r in rows}

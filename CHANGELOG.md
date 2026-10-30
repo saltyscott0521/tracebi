@@ -31,6 +31,9 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ### Changed
 
+- **The library paints at once**: the state store keeps each build's last verdict (`tracebi_verdicts`, a new Alembic revision), a server just started reuses one whose inputs are unchanged, and `GET /api/desk?quick=1` re-runs nothing, returning any other verdict `pending` with the last answer and when it was computed; the app shows those as **Checking** (never green) while it re-checks in the background, and the glance says when the verdicts were **Checked**.
+- **Lineage gives the lanes the width**: a selected piece's passport floats over the map (× or Escape closes it), names break only after `_ . /` and end in an ellipsis, wires leave from the cards' edges across wider gutters, and each lens has a one-line legend above the lanes with its own empty state (Flow at rest says how to light a path).
+- **Schema canvases open readable**: a model's Schema tab and the Warehouse schema open at 90% or more on the selected table, else the fact (the Warehouse on its first group), with **Show all** one click away.
 - **An app.jsx page is compiled once, at build**: `tracebi report build` turns its JSX into plain JavaScript with Sucrase run in an embedded V8 (`mini-racer`, now in the `reports`, `analyst`, `all` and `dev` extras; no Node), so the page no longer carries a compiler (`react.min.js` 295 KB → 88 KB) and JSX that does not parse fails the build with its line and column. The manifest's `app_compile` says `{"at": "build"}`; where mini-racer is not installed the page compiles itself as before and the manifest says `{"at": "page", "reason": …}`.
 - **Tailwind runs at build**: the build writes the CSS for the classes app.jsx spells out (14 KB on the showcase) in place of Tailwind's 259 KB browser build, so a class must be written whole (`"text-good"`, never `"text-" + tone`), as with Tailwind's CLI.
 - **A slimmer ECharts** (`echarts-kit.min.js` 932 KB → 835 KB): the series the option builder draws (bar, line, scatter, effectScatter, pictorialBar, pie, funnel, treemap, sunburst), the shipped reports' heatmap and sankey, and the components the builder and the guides name (legend, dataZoom slider, brush, visualMap, markArea, toolbox, …); radar, gauge, candlestick, boxplot, graph, parallel, themeRiver, polar and dataset are no longer in it. An app page is 0.55 MB lighter (2.12 MB → 1.57 MB on the showcase, 643 KB → 500 KB gzipped).
@@ -75,6 +78,7 @@ follows [Semantic Versioning](https://semver.org/) once it reaches 1.0.
 
 ### Fixed
 
+- **Kept verdicts stay kept.** Live discovery's rescan recorded a model's file relative to the working directory, so a verdict's key changed every few seconds and each library load re-ran every build's queries; the key now uses the absolute path.
 - **`list_reports` lists the library in a bare `tracebi mcp` process.** It was empty until `describe_project` had scanned the library.
 - **A model draft with a time grain over a column the warehouse holds as text is refused at preview**, naming the column and its type; it compiled before, and every query grouping by it then failed with DuckDB's binder error.
 - **A model replaced by a publish lets go of its warehouse.** The object it replaced kept the file open after a build had read through it, so the next transform in the same server process (an approval's run) could not write the warehouse.

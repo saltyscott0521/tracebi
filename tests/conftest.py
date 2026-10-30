@@ -20,6 +20,14 @@ os.environ["TRACEBI_UPDATE_CHECK"] = "0"
 # launch, and the suite builds hundreds of reports. The reference journey
 # turns it back on where covers are what it checks.
 os.environ["TRACEBI_COVERS"] = "0"
+# Every subprocess a test starts (the UI smoke server, CLI runs, a
+# project's run_workflow.py) imports the tree these tests live in, not
+# whatever checkout the editable install points at: from a git worktree
+# that is another branch's code (design/pitfalls.md).
+_TREE = str(Path(__file__).resolve().parents[1])
+os.environ["PYTHONPATH"] = os.pathsep.join(
+    [_TREE] + [p for p in os.environ.get("PYTHONPATH", "").split(os.pathsep)
+               if p and p != _TREE])
 
 
 @pytest.fixture(autouse=True)
